@@ -61,6 +61,15 @@ export const db = {
       .eq('teacher_id', teacherId)
       .order('created_at', { ascending: false }))
   },
+  /** Unidades de aprendizaje ya subidas por el docente (para enlazar sesiones). */
+  unitsByTeacher(teacherId: string) {
+    return rows<Artifact>(supabase
+      .from('artifacts')
+      .select('id, type, status, subject_id, subjects(name), created_at')
+      .eq('teacher_id', teacherId)
+      .eq('type', 'MONTHLY_UNIT')
+      .order('created_at', { ascending: false }))
+  },
 
   // ── Directivo / Institución ──
   teachersByInstitution(institutionId: string) {

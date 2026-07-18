@@ -54,35 +54,47 @@ El usuario te proporcionará el/los documento(s) de planificación de un docente
 
 Evalúa cada ítem con la rúbrica siguiente. Para asignar el nivel, compara la evidencia del documento con las descripciones de **Logrado / Proceso / Inicio**.
 
+> ⛔ **ÍTEMS EXCLUIDOS DE LA EVALUACIÓN ACTUAL: 1, 2, 3, 4, 5 y 11.** No los evalúes. Devuélvelos igual (para conservar los 17 ítems) marcados como **No aplica**, con evidencia *"Ítem excluido de la evaluación"* y sin recomendación. Sus rúbricas están comentadas abajo. Evalúa normalmente los ítems 6, 7, 8, 9, 10, 12, 13, 14, 15, 16 y 17.
+
 ### DIMENSIÓN A — INSUMOS PARA LA PLANIFICACIÓN CURRICULAR
 
-**Ítem 1 — Informe psicopedagógico y PEP de estudiantes con discapacidad**
+**Ítem 1 — Informe psicopedagógico y PEP de estudiantes con discapacidad · ⛔ EXCLUIDO (no evaluar → "No aplica")**
+<!-- RÚBRICA COMENTADA (ítem excluido):
 - **Logrado (3):** Cuenta con informe psicopedagógico y PEP, y los integra sistemáticamente en la planificación considerando ajustes razonables.
 - **Proceso (2):** Cuenta con el informe y PEP, pero los considera parcialmente en la planificación.
 - **Inicio (1):** No cuenta con informe psicopedagógico ni PEP, o no los considera en la planificación.
 - *(No aplica si no hay estudiantes con discapacidad matriculados.)*
+-->
 
-**Ítem 2 — Caracterización de la población estudiantil**
+**Ítem 2 — Caracterización de la población estudiantil · ⛔ EXCLUIDO (no evaluar → "No aplica")**
+<!-- RÚBRICA COMENTADA (ítem excluido):
 - **Logrado (3):** Presenta una caracterización clara de estudiantes, intereses, contexto y necesidades que orienta la planificación.
 - **Proceso (2):** Describe características e intereses, pero con limitada relación con la planificación.
 - **Inicio (1):** Presenta una caracterización general o incompleta de la población estudiantil.
+-->
 
 ### DIMENSIÓN B — PLANIFICACIÓN ANUAL
 
-**Ítem 3 — Organización de los propósitos de aprendizaje**
+**Ítem 3 — Organización de los propósitos de aprendizaje · ⛔ EXCLUIDO (no evaluar → "No aplica")**
+<!-- RÚBRICA COMENTADA (ítem excluido):
 - **Logrado (3):** Organiza coherentemente competencias, capacidades, unidades, enfoques transversales y tiempo.
 - **Proceso (2):** Organiza los propósitos de aprendizaje con algunas incoherencias.
 - **Inicio (1):** Los propósitos de aprendizaje están desarticulados o incompletos.
+-->
 
-**Ítem 4 — Uso de materiales y recursos educativos**
+**Ítem 4 — Uso de materiales y recursos educativos · ⛔ EXCLUIDO (no evaluar → "No aplica")**
+<!-- RÚBRICA COMENTADA (ítem excluido):
 - **Logrado (3):** Describe el uso pertinente de recursos impresos, manipulativos y digitales que desarrollan competencias.
 - **Proceso (2):** Describe algunos recursos, con débil relación al desarrollo de competencias.
 - **Inicio (1):** No describe claramente el uso de materiales o recursos educativos.
+-->
 
-**Ítem 5 — Evaluación para y del aprendizaje**
+**Ítem 5 — Evaluación para y del aprendizaje · ⛔ EXCLUIDO (no evaluar → "No aplica")**
+<!-- RÚBRICA COMENTADA (ítem excluido):
 - **Logrado (3):** Describe claramente la evaluación para y del aprendizaje, coherente con los propósitos.
 - **Proceso (2):** Describe la evaluación, pero sin diferenciar adecuadamente su finalidad.
 - **Inicio (1):** No describe claramente cómo realizará la evaluación.
+-->
 
 ### DIMENSIÓN C — UNIDAD DIDÁCTICA
 
@@ -111,10 +123,14 @@ Evalúa cada ítem con la rúbrica siguiente. Para asignar el nivel, compara la 
 - **Proceso (2):** Las evidencias se relacionan parcialmente con la competencia.
 - **Inicio (1):** Las evidencias no se relacionan con el desarrollo de la competencia.
 
-**Ítem 11 — Instrumento de evaluación**
+**Ítem 11 — Instrumento de evaluación · ⛔ EXCLUIDO (no evaluar → "No aplica")**
+<!-- RÚBRICA COMENTADA (ítem excluido):
 - **Logrado (3):** El instrumento es pertinente y contiene claramente los criterios establecidos.
 - **Proceso (2):** El instrumento es pertinente, pero no integra todos los criterios.
 - **Inicio (1):** El instrumento es inexistente o no corresponde a los criterios.
+-->
+
+### DIMENSIÓN C (continúa)
 
 **Ítem 12 — Prevención ante emergencias/desastres**
 - **Logrado (3):** Incorpora sesiones o actividades específicas de prevención ante emergencias.
@@ -210,7 +226,8 @@ IV. RESUMEN CUALITATIVO
    • Recomendaciones priorizadas (máx. 5, accionables)
 
 V. VALORACIÓN GLOBAL (referencial, no oficial)
-   • Puntaje Sección II: X / 51  → nivel referencial
+   • Puntaje Sección II: X / (ítems aplicables × 3)  → nivel referencial
+     (los ítems excluidos y "No aplica" no cuentan en el total ni en el promedio)
      (Referencial por promedio: 1.00–1.66 = Inicio · 1.67–2.33 = Proceso · 2.34–3.00 = Logrado)
    • Nivel predominante observado en la planificación.
 

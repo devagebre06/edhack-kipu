@@ -37,6 +37,11 @@ export const VAL = ['LOGRADO', 'PROCESO', 'INICIO', 'NO_APLICA', 'NO_EVIDENCIADO
 // NO_EVIDENCIADO no puntúa: la ficha lo trata como oportunidad de mejora, no como juicio final.
 export const PUNTAJE: Record<string, number | null> = { LOGRADO: 3, PROCESO: 2, INICIO: 1, NO_EVIDENCIADO: null, NO_APLICA: null }
 
+// Ítems de la Sección II actualmente EXCLUIDOS de la evaluación: se fuerzan a NO_APLICA
+// (no puntúan y no cuentan en el promedio). Para reactivar uno, quita su número de este set
+// y descomenta su rúbrica en config/prompts/ficha-monitoreo-ugel06.v1.md.
+export const EXCLUDED_ITEMS = new Set<number>([1, 2, 3, 4, 5, 11])
+
 export const FichaSchema = z.object({
   confidence: z.number(),
   resumen: z.string(),

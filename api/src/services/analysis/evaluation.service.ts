@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { RUBRIC_VERSION } from '../../config/env.ts'
 import { gemini } from './gemini.client.ts'
 import { extract } from './extraction.service.ts'
-import { ITEMS, DESEMPENOS, VAL, PUNTAJE, FichaSchema } from './rubric.ts'
+import { ITEMS, DESEMPENOS, VAL, PUNTAJE, FichaSchema, EXCLUDED_ITEMS } from './rubric.ts'
 
 // System prompt con la rúbrica completa (cargado una sola vez al iniciar).
 const fichaPrompt = await readFile(
@@ -41,7 +41,7 @@ DOCUMENTO DEL DOCENTE (Markdown extraído):
 ${markdown.slice(0, 60000)}
 
 Aplica tu flujo de trabajo interno y responde SOLO el JSON pedido:
-- items: los 17 ítems de la Sección II en orden (numero 1 a 17). valoracion: LOGRADO/PROCESO/INICIO según la rúbrica; NO_EVIDENCIADO si el documento requerido no está presente; NO_APLICA solo en el ítem 1 sin estudiantes con discapacidad. evidencia: cita textual o referencia de sección del documento ("No evidenciado en el documento" si falta). recomendacion: breve y accionable.
+- items: los 17 ítems de la Sección II en orden (numero 1 a 17). IMPORTANTE: los ítems 1, 2, 3, 4, 5 y 11 están EXCLUIDOS de la evaluación actual; devuélvelos igual (para conservar los 17) con valoracion NO_APLICA, evidencia "Ítem excluido de la evaluación" y recomendacion "". Para los demás ítems: valoracion LOGRADO/PROCESO/INICIO según la rúbrica; NO_EVIDENCIADO si el documento requerido no está presente. evidencia: cita textual o referencia de sección del documento ("No evidenciado en el documento" si falta). recomendacion: breve y accionable.
 - desempenos: los 5 desempeños de la Sección III en orden (numero 1 a 5), valorando SOLO el diseño de la sesión. evidencia_diseno: qué prevé (o no) la sesión.
 - resumen: 3-5 frases formativas dirigidas al docente (fortalezas, dificultades y siguiente paso), recordando que la valoración de la Sección III requiere observación de aula.
 - fortalezas y oportunidades: listas específicas.
@@ -74,9 +74,20 @@ Aplica tu flujo de trabajo interno y responde SOLO el JSON pedido:
   }))
 
   // Puntajes calculados en el servidor: no se confía en la aritmética del modelo.
+  // Los ítems excluidos se fuerzan a NO_APLICA aquí (defensivo), sin importar lo que devuelva el modelo:
+  // así nunca puntúan ni generan flags, aunque el modelo ignore la instrucción del prompt.
   const items = parsed.items
     .sort((a, b) => a.numero - b.numero)
-    .map((it, i) => ({ ...it, dimension: ITEMS[i][0], nombre: ITEMS[i][1], puntaje: PUNTAJE[it.valoracion] }))
+    .map((it, i) => {
+      const excluido = EXCLUDED_ITEMS.has(it.numero)
+      const valoracion = excluido ? 'NO_APLICA' as const : it.valoracion
+      return {
+        ...it, valoracion,
+        evidencia: excluido ? 'Ítem excluido de la evaluación' : it.evidencia,
+        recomendacion: excluido ? '' : it.recomendacion,
+        dimension: ITEMS[i][0], nombre: ITEMS[i][1], puntaje: PUNTAJE[valoracion], excluido,
+      }
+    })
   const aplicables = items.filter(it => it.puntaje !== null)
   const puntaje_total = aplicables.reduce((s, it) => s + it.puntaje!, 0)
   const puntaje_max = aplicables.length * 3

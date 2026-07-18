@@ -18,12 +18,21 @@ export function useArtifactTypes(teacherId: string) {
   })
 }
 
+/** Unidades de aprendizaje ya subidas (precondición para registrar sesiones). */
+export function useTeacherUnits(teacherId: string) {
+  return useQuery({
+    queryKey: qk.units,
+    queryFn: () => api.db.unitsByTeacher(teacherId),
+  })
+}
+
 /** Sube una evidencia nueva o una versión corregida y refresca las listas. */
 export function useSubmitArtifact() {
   const qc = useQueryClient()
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: qk.artifacts })
     qc.invalidateQueries({ queryKey: qk.artifactTypes })
+    qc.invalidateQueries({ queryKey: qk.units })
   }
   return useMutation({
     mutationFn: (vars: { form: FormData; resubmitFor?: string | null }) =>

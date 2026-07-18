@@ -3,6 +3,7 @@ export const qk = {
   schedules: ['schedules'] as const,
   artifacts: ['artifacts'] as const,
   artifactTypes: ['artifacts-types'] as const,
+  units: ['artifacts-units'] as const,
   directorPanel: ['director-panel'] as const,
   directorArtifacts: ['director-artifacts'] as const,
   directorAlerts: ['director-alerts'] as const,
