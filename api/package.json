@@ -5,7 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon",
-    "start": "tsx src/server.ts"
+    "start": "tsx src/server.ts",
+    "db:seed": "node --env-file=.env scripts/seed.mjs",
+    "db:add-user": "node --env-file=.env scripts/add-user.mjs"
   },
   "keywords": [],
   "author": "",

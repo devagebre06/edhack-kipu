@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { supabase } from '../lib'
-import { Logo } from '../ui'
+import { auth } from '@/services'
+import { Logo } from '@/components'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -11,7 +11,7 @@ export default function Login() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true); setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await auth.signIn(email, password)
     if (error) { setError('Correo o contraseña incorrectos.'); setBusy(false) }
   }
 

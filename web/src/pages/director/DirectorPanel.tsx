@@ -1,39 +1,17 @@
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '../lib'
-import { useProfile } from '../App'
-import { Badge, Spinner, Stat } from '../ui'
+import { useProfile, useDirectorPanel } from '@/hooks'
+import { countByStatus, averageScore, progressByTeacher } from '@/factories'
+import { Badge, Spinner, Stat } from '@/components'
 
 export default function DirectorPanel() {
   const profile = useProfile()
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['director-panel'],
-    queryFn: async () => {
-      const [teachers, artifacts] = await Promise.all([
-        supabase.from('profiles').select('*').eq('institution_id', profile.institution_id!).eq('role', 'teacher'),
-        supabase.from('artifacts').select('id, status, type, teacher_id, profiles(full_name), artifact_versions(evaluations(overall_score))')
-          .eq('institution_id', profile.institution_id!),
-      ])
-      return { teachers: teachers.data || [], artifacts: artifacts.data || [] }
-    },
-  })
+  const { data, isLoading } = useDirectorPanel(profile.institution_id!)
 
   if (isLoading || !data) return <Spinner text="Cargando panel…" />
   const { teachers, artifacts } = data
 
-  const approved = artifacts.filter(a => a.status === 'APPROVED').length
-  const revision = artifacts.filter(a => a.status === 'NEEDS_REVISION').length
-  const manual = artifacts.filter(a => a.status === 'MANUAL_REVIEW').length
-
-  const scores = artifacts.flatMap(a => (a.artifact_versions as any[]).flatMap(v => (v.evaluations as any[]).map((e: any) => e.overall_score)))
-  const avg = scores.length ? Math.round(scores.reduce((s, x) => s + x, 0) / scores.length) : null
-
-  // Por docente: cuántas aprobadas vs total
-  const byTeacher = teachers.map(t => {
-    const arts = artifacts.filter(a => a.teacher_id === t.id)
-    const ok = arts.filter(a => a.status === 'APPROVED').length
-    return { name: t.full_name, total: arts.length, ok, pct: arts.length ? Math.round((ok / arts.length) * 100) : null }
-  }).sort((a, b) => (a.pct ?? -1) - (b.pct ?? -1))
+  const { total, approved, revision, manual, approvalRate } = countByStatus(artifacts)
+  const avg = averageScore(artifacts)
+  const byTeacher = progressByTeacher(teachers, artifacts)
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -42,14 +20,14 @@ export default function DirectorPanel() {
 
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Docentes" value={teachers.length} />
-        <Stat label="Entregas totales" value={artifacts.length} />
+        <Stat label="Entregas totales" value={total} />
         <Stat label="Aprobadas" value={approved} tone="ok" />
         <Stat label="Por corregir" value={revision} tone={revision > 0 ? 'warn' : undefined} />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Revisión manual" value={manual} tone={manual > 0 ? 'warn' : undefined} />
         <Stat label="Puntaje promedio" value={avg !== null ? `${avg}/100` : '—'} />
-        <Stat label="Tasa de aprobación" value={artifacts.length ? `${Math.round((approved / artifacts.length) * 100)}%` : '—'} tone={approved / (artifacts.length || 1) >= 0.7 ? 'ok' : 'warn'} />
+        <Stat label="Tasa de aprobación" value={approvalRate !== null ? `${approvalRate}%` : '—'} tone={(approvalRate ?? 0) >= 70 ? 'ok' : 'warn'} />
         <Stat label="Aprobación bimestral" value="—" />
       </div>
 

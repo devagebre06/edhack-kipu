@@ -1,60 +1,42 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { supabase, apiUpload, TYPE_LABEL } from '../lib'
-import { useProfile } from '../App'
-import { Spinner } from '../ui'
-
-const SUBJECTS_ALLOWED = ['Matemática', 'Comunicación']
-const GRADE_ALLOWED = '4to'
+import { TYPE_LABEL } from '@/config/labels'
+import { useProfile, useAllowedSchedules, useSubmitArtifact } from '@/hooks'
+import { Spinner } from '@/components'
 
 export default function TeacherUpload() {
   const profile = useProfile()
-  const qc = useQueryClient()
   const navigate = useNavigate()
+  const { allowed } = useAllowedSchedules(profile.id)
+  const submitArtifact = useSubmitArtifact()
+
   const [file, setFile] = useState<File | null>(null)
   const [scheduleId, setScheduleId] = useState('')
   const [type, setType] = useState('DAILY_SESSION')
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [done, setDone] = useState<{ score: number; decision: string } | null>(null)
+  const [done, setDone] = useState<{ score: number } | null>(null)
 
-  const { data: schedules } = useQuery({
-    queryKey: ['schedules'],
-    queryFn: async () => (await supabase
-      .from('class_schedules')
-      .select('*, subjects(name), student_groups(name, grade)')
-      .eq('teacher_id', profile.id)
-    ).data || [],
-  })
-
-  // Filtrar solo Matemática y Comunicación para 4to primaria
-  const allowed = (schedules || []).filter(s =>
-    SUBJECTS_ALLOWED.includes(s.subjects?.name || '') &&
-    (s.student_groups?.grade || '').includes(GRADE_ALLOWED)
-  )
   const today = new Date().getDay()
   const todaySchedules = allowed.filter(s => s.weekday === today)
   const displaySchedules = type === 'DAILY_SESSION' ? todaySchedules : allowed
+  const busy = submitArtifact.isPending
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file) return
     const sched = displaySchedules.find(s => s.id === scheduleId)
     if (!sched) { setError('Selecciona tu clase.'); return }
-    setBusy(true); setError(''); setDone(null)
+    setError(''); setDone(null)
     try {
       const form = new FormData()
       form.append('file', file)
       form.append('type', type)
       form.append('subject_id', sched.subject_id)
       form.append('group_id', sched.group_id)
-      const result = await apiUpload('/api/v1/artifacts', form)
-      qc.invalidateQueries({ queryKey: ['artifacts'] })
-      qc.invalidateQueries({ queryKey: ['artifacts-types'] })
+      const result = await submitArtifact.mutateAsync({ form })
       setFile(null); setScheduleId('')
-      setDone({ score: result.evaluation?.overall_score ?? 0, decision: result.status })
-    } catch (err: any) { setError(err.message) } finally { setBusy(false) }
+      setDone({ score: result.evaluation?.overall_score ?? 0 })
+    } catch (err: any) { setError(err.message) }
   }
 
   return (
@@ -66,7 +48,7 @@ export default function TeacherUpload() {
         <div className="mt-4 rounded-lg border border-ok/30 bg-ok-bg p-4">
           <p className="font-medium text-ok">Entrega procesada — puntaje {done.score}/100</p>
           <div className="mt-2 flex gap-3">
-            <button onClick={() => { setDone(null) }} className="text-sm underline text-ok hover:opacity-80">Subir otra</button>
+            <button onClick={() => setDone(null)} className="text-sm underline text-ok hover:opacity-80">Subir otra</button>
             <button onClick={() => navigate('/profesor/entregas')} className="text-sm underline text-ok hover:opacity-80">Ver mis entregas</button>
           </div>
         </div>

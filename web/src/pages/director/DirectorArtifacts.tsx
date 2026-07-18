@@ -1,40 +1,29 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
-import { supabase, STATUS_LABEL, TYPE_LABEL } from '../lib'
-import { useProfile } from '../App'
-import { Badge, Spinner, Table } from '../ui'
+import { STATUS_LABEL, TYPE_LABEL } from '@/config/labels'
+import { useProfile, useDirectorArtifacts } from '@/hooks'
+import { artifactScore, teacherName, subjectName } from '@/factories'
+import { Badge, Spinner, Table } from '@/components'
 
 export default function DirectorArtifacts() {
   const profile = useProfile()
+  const { data, isLoading } = useDirectorArtifacts(profile.institution_id!)
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['director-artifacts'],
-    queryFn: async () => (await supabase
-      .from('artifacts')
-      .select('*, profiles(full_name), subjects(name), artifact_versions(version, status, created_at, evaluations(overall_score, decision))')
-      .eq('institution_id', profile.institution_id!)
-      .order('created_at', { ascending: false })
-    ).data || [],
-  })
-
-  const artifacts = data || []
-  const score = (a: any) => a.artifact_versions?.at(-1)?.evaluations?.[0]?.overall_score
-
+  const artifacts = data ?? []
   let filtered = artifacts
   if (statusFilter) filtered = filtered.filter(a => a.status === statusFilter)
   if (typeFilter) filtered = filtered.filter(a => a.type === typeFilter)
 
   const exportXlsx = () => {
     const rows = artifacts.map(a => ({
-      Docente: (a as any).profiles?.full_name,
-      Curso: (a as any).subjects?.name,
+      Docente: teacherName(a),
+      Curso: subjectName(a),
       Tipo: TYPE_LABEL[a.type],
       Estado: STATUS_LABEL[a.status],
       Versión: a.current_version,
-      Puntaje: score(a) ?? '',
+      Puntaje: artifactScore(a) ?? '',
       Fecha: new Date(a.created_at).toLocaleDateString('es-PE'),
     }))
     const wb = XLSX.utils.book_new()
@@ -79,11 +68,11 @@ export default function DirectorArtifacts() {
           head={['Docente', 'Curso', 'Tipo', 'v', 'Puntaje', 'Estado', 'Fecha']}
           empty="No hay entregas con esos filtros."
           rows={filtered.map(a => [
-            (a as any).profiles?.full_name,
-            (a as any).subjects?.name,
+            teacherName(a),
+            subjectName(a),
             TYPE_LABEL[a.type],
             `v${a.current_version}`,
-            score(a) !== undefined ? `${score(a)}/100` : '—',
+            artifactScore(a) !== undefined ? `${artifactScore(a)}/100` : '—',
             <Badge value={a.status} label={STATUS_LABEL[a.status]} />,
             new Date(a.created_at).toLocaleDateString('es-PE'),
           ])}

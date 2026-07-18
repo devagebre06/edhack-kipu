@@ -1,26 +1,7 @@
-import { Badge } from '../ui'
-import { STATUS_LABEL } from '../lib'
-
-export type Criterion = { criterionCode: string; criterionName: string; score: number; maxScore: number; status: string; feedback: string; evidence: { quote: string; location: string }[] }
-export type FichaItem = { numero: number; dimension: string; nombre: string; valoracion: string; puntaje: number | null; evidencia: string; recomendacion: string }
-export type Desempeno = { numero: number; nombre: string; valoracion: string; evidencia_diseno: string; recomendacion: string }
-export type Ficha = {
-  version: string
-  extraccion: { identificacion: Record<string, string>; documentos_presentes: Record<string, boolean> }
-  items: FichaItem[]; desempenos: Desempeno[]
-  puntaje_total: number; puntaje_max: number; promedio: number; nivel_global: string
-  recomendaciones_priorizadas: string[]; compromisos_docente: string[]; compromisos_especialista: string[]
-}
-export type Evaluation = { overall_score: number; decision: string; summary: string; strengths: string[]; improvements: string[]; criteria: Criterion[] | Ficha }
-
-const DIMENSION_LABEL: Record<string, string> = {
-  A: 'A · Insumos para la planificación curricular', B: 'B · Planificación anual',
-  C: 'C · Unidad didáctica', D: 'D · Sesión de aprendizaje',
-}
-const VAL_LABEL: Record<string, string> = { LOGRADO: 'Logrado', PROCESO: 'En proceso', INICIO: 'Inicio', NO_APLICA: 'No aplica', NO_EVIDENCIADO: 'No evidenciado' }
-const VAL_BADGE: Record<string, string> = { LOGRADO: 'APPROVED', PROCESO: 'PROCESSING', INICIO: 'NEEDS_REVISION', NO_APLICA: 'MANUAL_REVIEW', NO_EVIDENCIADO: 'NEEDS_REVISION' }
-const ID_LABEL: Record<string, string> = { ie: 'IE', docente: 'Docente', nivel: 'Nivel', area: 'Área', grado_seccion: 'Grado/Sección', competencia: 'Competencia', unidad: 'Unidad', sesion: 'Sesión' }
-const DOC_LABEL: Record<string, string> = { insumos: 'Insumos de planificación', planificacion_anual: 'Planificación anual', unidad_didactica: 'Unidad didáctica', sesion_aprendizaje: 'Sesión de aprendizaje', instrumentos_evaluacion: 'Instrumentos de evaluación' }
+import type { Evaluation, Ficha } from '@/types'
+import { STATUS_LABEL, DIMENSION_LABEL, VAL_LABEL, VAL_BADGE, ID_LABEL, DOC_LABEL } from '@/config/labels'
+import { getFicha, getLegacyCriteria, scoreDelta, fichaItemsByDimension } from '@/factories'
+import { Badge } from '../Badge'
 
 function ItemDetail({ nombre, valoracion, evidencia, recomendacion }: { nombre: string; valoracion: string; evidencia: string; recomendacion: string }) {
   return (
@@ -36,7 +17,7 @@ function ItemDetail({ nombre, valoracion, evidencia, recomendacion }: { nombre: 
 }
 
 function FichaView({ ficha }: { ficha: Ficha }) {
-  const dims = ['A', 'B', 'C', 'D'].map(d => [d, ficha.items.filter(it => it.dimension === d)] as const)
+  const dims = fichaItemsByDimension(ficha)
   const id = ficha.extraccion?.identificacion || {}
   const docs = ficha.extraccion?.documentos_presentes || {}
   return (
@@ -102,15 +83,16 @@ function FichaView({ ficha }: { ficha: Ficha }) {
 }
 
 export function EvaluationView({ ev, prev }: { ev: Evaluation; prev?: Evaluation }) {
-  const ficha = !Array.isArray(ev.criteria) && (ev.criteria as Ficha)?.items ? ev.criteria as Ficha : null
-  const legacy = Array.isArray(ev.criteria) ? ev.criteria : []
+  const ficha = getFicha(ev)
+  const legacy = getLegacyCriteria(ev)
+  const delta = scoreDelta(ev, prev)
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-4">
         <div className="text-4xl font-semibold">{ev.overall_score}<span className="text-lg text-ink-soft">/100</span></div>
         <Badge value={ev.decision} label={STATUS_LABEL[ev.decision]} />
-        {prev && <span className={`text-sm font-medium ${ev.overall_score >= prev.overall_score ? 'text-ok' : 'text-warn'}`}>
-          {ev.overall_score >= prev.overall_score ? '▲' : '▼'} {Math.abs(ev.overall_score - prev.overall_score)} pts vs. versión anterior
+        {delta !== null && <span className={`text-sm font-medium ${delta >= 0 ? 'text-ok' : 'text-warn'}`}>
+          {delta >= 0 ? '▲' : '▼'} {Math.abs(delta)} pts vs. versión anterior
         </span>}
       </div>
       <p className="max-w-[70ch] text-sm">{ev.summary}</p>

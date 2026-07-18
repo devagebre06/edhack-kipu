@@ -1,54 +1,38 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { supabase, apiUpload, STATUS_LABEL, TYPE_LABEL } from '../lib'
-import { useProfile } from '../App'
-import { Badge, Spinner, Table } from '../ui'
-import { EvaluationView, type Evaluation } from './EvaluationView'
-
-type Version = { id: string; version: number; status: string; created_at: string; original_filename: string; evaluations: Evaluation[] }
-type Artifact = { id: string; type: string; status: string; current_version: number; created_at: string; artifact_versions: Version[] }
-
-const STATUS_FILTERS = ['', 'APPROVED', 'NEEDS_REVISION', 'MANUAL_REVIEW', 'PROCESSING', 'PROCESSING_ERROR']
+import { STATUS_LABEL, TYPE_LABEL } from '@/config/labels'
+import { ARTIFACT_STATUS_FILTERS } from '@/config/constants'
+import { useProfile, useTeacherArtifacts, useSubmitArtifact } from '@/hooks'
+import { sortedVersions, latestVersion, latestEvaluation, previousEvaluation, countByStatus } from '@/factories'
+import { Badge, Spinner, Table, EvaluationView } from '@/components'
 
 export default function TeacherArtifacts() {
   const profile = useProfile()
-  const qc = useQueryClient()
   const navigate = useNavigate()
+  const { data: artifacts, isLoading } = useTeacherArtifacts(profile.id)
+  const submitArtifact = useSubmitArtifact()
+
   const [statusFilter, setStatusFilter] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
   const [resubmitFor, setResubmitFor] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const { data: artifacts, isLoading } = useQuery({
-    queryKey: ['artifacts'],
-    queryFn: async () => (await supabase
-      .from('artifacts')
-      .select('*, artifact_versions(*, evaluations(*))')
-      .eq('teacher_id', profile.id)
-      .order('created_at', { ascending: false })
-    ).data as Artifact[] || [],
-  })
-
-  const list = artifacts || []
+  const list = artifacts ?? []
   const filtered = statusFilter ? list.filter(a => a.status === statusFilter) : list
-  const approved = list.filter(a => a.status === 'APPROVED').length
-  const revision = list.filter(a => a.status === 'NEEDS_REVISION').length
+  const { total, approved, revision } = countByStatus(list)
+  const busy = submitArtifact.isPending
 
   const resubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file || !resubmitFor) return
-    setBusy(true); setError('')
+    setError('')
     try {
       const form = new FormData()
       form.append('file', file)
-      await apiUpload(`/api/v1/artifacts/${resubmitFor}/versions`, form)
-      qc.invalidateQueries({ queryKey: ['artifacts'] })
-      qc.invalidateQueries({ queryKey: ['artifacts-types'] })
+      await submitArtifact.mutateAsync({ form, resubmitFor })
       setFile(null); setResubmitFor(null)
-    } catch (err: any) { setError(err.message) } finally { setBusy(false) }
+    } catch (err: any) { setError(err.message) }
   }
 
   return (
@@ -67,7 +51,7 @@ export default function TeacherArtifacts() {
       <div className="mt-5 grid grid-cols-3 gap-3">
         <div className="rounded-lg border border-line bg-surface px-4 py-3">
           <div className="text-sm text-ink-soft">Total</div>
-          <div className="text-2xl font-semibold">{list.length}</div>
+          <div className="text-2xl font-semibold">{total}</div>
         </div>
         <div className="rounded-lg border border-line bg-surface px-4 py-3">
           <div className="text-sm text-ink-soft">Aprobadas</div>
@@ -79,7 +63,6 @@ export default function TeacherArtifacts() {
         </div>
       </div>
 
-      {/* Panel de reenvío */}
       {resubmitFor && (
         <form onSubmit={resubmit} className="mt-5 rounded-lg border border-warn/30 bg-warn-bg p-4 space-y-3">
           <p className="text-sm font-medium">Subiendo corrección para la entrega seleccionada. La versión anterior se conserva.</p>
@@ -102,7 +85,7 @@ export default function TeacherArtifacts() {
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
             className="rounded-md border border-line bg-surface px-3 py-1.5 text-sm">
             <option value="">Todos</option>
-            {STATUS_FILTERS.filter(Boolean).map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+            {ARTIFACT_STATUS_FILTERS.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
           </select>
         </div>
 
@@ -114,10 +97,10 @@ export default function TeacherArtifacts() {
               </p>
             )}
             {filtered.map(a => {
-              const versions = [...a.artifact_versions].sort((x, y) => y.version - x.version)
-              const current = versions[0]
-              const ev = current?.evaluations?.[0] as Evaluation | undefined
-              const prevEv = versions[1]?.evaluations?.[0] as Evaluation | undefined
+              const versions = sortedVersions(a)
+              const current = latestVersion(a)
+              const ev = latestEvaluation(a)
+              const prevEv = previousEvaluation(a)
               const open = openId === a.id
               return (
                 <div key={a.id} className="rounded-lg border border-line bg-surface">
@@ -156,7 +139,7 @@ export default function TeacherArtifacts() {
                               `v${v.version}`,
                               v.original_filename,
                               new Date(v.created_at).toLocaleString('es-PE'),
-                              (v.evaluations?.[0] as any)?.overall_score ?? '—',
+                              v.evaluations?.[0]?.overall_score ?? '—',
                               <Badge value={v.status} label={STATUS_LABEL[v.status]} />,
                             ])}
                           />

@@ -1,49 +1,29 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase, SEVERITY_LABEL, ALERT_STATUS_LABEL } from '../lib'
-import { useProfile } from '../App'
-import { Badge, Spinner } from '../ui'
-
-const NEXT_STATUS: Record<string, string> = {
-  NEW: 'UNDER_REVIEW', UNDER_REVIEW: 'RESOLVED', ESCALATED: 'RESOLVED',
-}
+import { SEVERITY_LABEL, ALERT_STATUS_LABEL } from '@/config/labels'
+import { useProfile, useInstitutionAlerts, useUpdateAlertStatus, nextAlertStatus, qk } from '@/hooks'
+import { isClosed, activeAlerts } from '@/factories'
+import { Badge, Spinner } from '@/components'
 
 export default function DirectorAlerts() {
   const profile = useProfile()
-  const qc = useQueryClient()
+  const { data: alerts, isLoading } = useInstitutionAlerts(profile.institution_id!)
+  const updateStatus = useUpdateAlertStatus(qk.directorAlerts)
   const [severityFilter, setSeverityFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
-  const { data: alerts, isLoading } = useQuery({
-    queryKey: ['director-alerts'],
-    queryFn: async () => (await supabase
-      .from('alerts')
-      .select('*')
-      .eq('institution_id', profile.institution_id!)
-      .order('created_at', { ascending: false })
-    ).data || [],
-  })
-
-  const advance = async (id: string, current: string) => {
-    const next = NEXT_STATUS[current]
-    if (!next) return
-    await supabase.from('alerts').update({ status: next }).eq('id', id)
-    qc.invalidateQueries({ queryKey: ['director-alerts'] })
+  const advance = (id: string, current: string) => {
+    const next = nextAlertStatus(current)
+    if (next) updateStatus.mutate({ id, status: next })
   }
-
-  const dismiss = async (id: string) => {
-    await supabase.from('alerts').update({ status: 'DISMISSED' }).eq('id', id)
-    qc.invalidateQueries({ queryKey: ['director-alerts'] })
-  }
+  const dismiss = (id: string) => updateStatus.mutate({ id, status: 'DISMISSED' })
 
   if (isLoading) return <Spinner text="Cargando alertas…" />
 
-  const list = alerts || []
+  const list = alerts ?? []
   let filtered = list
   if (severityFilter) filtered = filtered.filter(a => a.severity === severityFilter)
   if (statusFilter) filtered = filtered.filter(a => a.status === statusFilter)
-
-  const active = list.filter(a => !['DISMISSED', 'RESOLVED'].includes(a.status)).length
+  const active = activeAlerts(list).length
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -83,18 +63,18 @@ export default function DirectorAlerts() {
           </p>
         )}
         {filtered.map(al => {
-          const resolved = ['DISMISSED', 'RESOLVED'].includes(al.status)
+          const closed = isClosed(al)
           return (
-            <div key={al.id} className={`rounded-lg border bg-surface p-4 ${resolved ? 'border-line opacity-60' : 'border-line'}`}>
+            <div key={al.id} className={`rounded-lg border border-line bg-surface p-4 ${closed ? 'opacity-60' : ''}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge value={al.severity} label={`Severidad ${SEVERITY_LABEL[al.severity]?.toLowerCase()}`} />
                   <Badge value={al.status} label={ALERT_STATUS_LABEL[al.status]} />
                   <span className="font-medium">{al.title}</span>
                 </div>
-                {!resolved && (
+                {!closed && (
                   <div className="flex shrink-0 gap-2">
-                    {NEXT_STATUS[al.status] && (
+                    {nextAlertStatus(al.status) && (
                       <button onClick={() => advance(al.id, al.status)}
                         className="rounded-md border border-line px-3 py-1 text-xs font-medium hover:bg-bg">
                         {al.status === 'NEW' ? 'Tomar en revisión' : 'Marcar resuelta'}
