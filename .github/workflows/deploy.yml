@@ -6,12 +6,11 @@ on:
 
 concurrency:
   group: production
-  cancel-in-progress: false   # never cancel an in-flight deploy
+  cancel-in-progress: false
 
 jobs:
-  # ── Web → Vercel ────────────────────────────────────────────────────────────
   deploy-web:
-    name: Web → Vercel
+    name: "Web - Vercel"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,16 +27,14 @@ jobs:
           vercel build --prod --token=$VERCEL_TOKEN
           vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
 
-  # ── API → Railway ───────────────────────────────────────────────────────────
   deploy-api:
-    name: API → Railway
+    name: "API - Railway"
     runs-on: ubuntu-latest
-    # Skip silently until RAILWAY_TOKEN is added — see repo README
-    if: ${{ secrets.RAILWAY_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Deploy to Railway
+        if: ${{ secrets.RAILWAY_TOKEN != '' }}
         working-directory: api
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
