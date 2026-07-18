@@ -1,8 +1,8 @@
-"name": "Deploy to Production"
+name: Deploy to Production
 
-"on":
+on:
   push:
-    branches: ["main"]
+    branches: [main]
 
 concurrency:
   group: production
@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   deploy-web:
-    name: "Web - Vercel"
+    name: Web - Vercel
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,13 +28,12 @@ jobs:
           vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
 
   deploy-api:
-    name: "API - Railway"
+    name: API - Railway
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Deploy to Railway
-        if: ${{ secrets.RAILWAY_TOKEN != '' }}
         working-directory: api
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
