@@ -38,6 +38,9 @@ jobs:
         working-directory: api
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
         run: |
           npm i -g @railway/cli --silent
-          railway up --service kipu-api --detach
+          railway up --service $RAILWAY_SERVICE_ID --environment $RAILWAY_ENVIRONMENT_ID --detach
