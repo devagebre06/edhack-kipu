@@ -1,8 +1,8 @@
-name: Deploy to Production
+"name": "Deploy to Production"
 
-on:
+"on":
   push:
-    branches: [main]
+    branches: ["main"]
 
 concurrency:
   group: production
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Vercel (production)
+      - name: Deploy to Vercel
         working-directory: web
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
