@@ -1,0 +1,11 @@
+{
+  "version": "daily-session.v1",
+  "artifactType": "DAILY_SESSION",
+  "criteria": [
+    { "code": "SESSION_COMPETENCY_ALIGNMENT", "name": "Alineación con competencia", "description": "La sesión identifica explícitamente la competencia y capacidad del CNEB que desarrolla.", "weight": 20, "critical": true },
+    { "code": "LEARNING_PURPOSE", "name": "Propósito de aprendizaje", "description": "Existe un propósito de aprendizaje claro comunicable a los estudiantes.", "weight": 20, "critical": false },
+    { "code": "DIDACTIC_SEQUENCE", "name": "Secuencia didáctica", "description": "La sesión presenta inicio, desarrollo y cierre con actividades coherentes y tiempos.", "weight": 20, "critical": false },
+    { "code": "FORMATIVE_FEEDBACK", "name": "Retroalimentación formativa", "description": "Incluye una estrategia explícita de retroalimentación al estudiante: qué logró, qué mejorar y qué acción sigue.", "weight": 20, "critical": true },
+    { "code": "EVALUATION_EVIDENCE", "name": "Evidencia de evaluación", "description": "Define qué evidencia de aprendizaje se recogerá y con qué criterio se valorará.", "weight": 20, "critical": false }
+  ]
+}
