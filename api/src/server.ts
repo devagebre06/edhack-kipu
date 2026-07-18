@@ -22,9 +22,10 @@ const GEMINI_KEY = env('GEMINI_API_KEY')
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 const WINDOW_BEFORE_MIN = Number(process.env.SESSION_UPLOAD_WINDOW_BEFORE_MINUTES || 30)
 const MAX_MB = Number(process.env.MAX_UPLOAD_SIZE_MB || 15)
-const PROMPT_VERSION = 'v1'
+const PROMPT_VERSION = 'v2'
+const RUBRIC_VERSION = 'ficha-monitoreo-ugel06.v1'
 
-const rubric = JSON.parse(await readFile(new URL('../config/rubrics/daily-session.v1.json', import.meta.url), 'utf8'))
+const fichaPrompt = await readFile(new URL('../config/prompts/ficha-monitoreo-ugel06.v1.md', import.meta.url), 'utf8')
 
 const app = express()
 app.use(cors())
@@ -55,65 +56,178 @@ async function toMarkdown(buf: Buffer, filename: string) {
   } finally { unlink(tmp).catch(() => {}) }
 }
 
-// --- gemini ---
-const EvalSchema = z.object({
-  decision: z.enum(['APPROVED', 'NEEDS_REVISION', 'MANUAL_REVIEW']),
-  overall_score: z.number(),
-  confidence: z.number(),
-  summary: z.string(),
-  strengths: z.array(z.string()),
-  improvements: z.array(z.string()),
-  criteria: z.array(z.object({
-    criterionCode: z.string(), criterionName: z.string(), score: z.number(), maxScore: z.number(),
-    status: z.enum(['PASS', 'PARTIAL', 'FAIL']), confidence: z.number(),
-    evidence: z.array(z.object({ quote: z.string(), location: z.string() })),
-    feedback: z.string(),
-  })),
-  criticalFlags: z.array(z.string()),
-})
-
-async function evaluate(markdown: string, ctx: { type: string; subject: string; grade: string; previous?: string }) {
-  const prompt = `Eres un especialista pedagógico de UGEL (Perú, CNEB). Evalúa el siguiente documento de tipo ${ctx.type} del curso "${ctx.subject}" (${ctx.grade}) contra la rúbrica. Sé específico, respetuoso y no punitivo; la retroalimentación debe ser accionable para el docente.
-
-RÚBRICA (JSON): ${JSON.stringify(rubric.criteria)}
-
-${ctx.previous ? `EVALUACIÓN ANTERIOR (es una corrección, compara y reconoce mejoras): ${ctx.previous}\n` : ''}
-DOCUMENTO (Markdown extraído):
-${markdown.slice(0, 60000)}
-
-Responde SOLO el JSON pedido. decision: APPROVED si score>=80 sin criterio crítico en FAIL; NEEDS_REVISION si score<80 o falla un criterio crítico; MANUAL_REVIEW si el documento es ilegible o la información es insuficiente (confidence<0.75). criticalFlags: códigos MISSING_<code> por cada criterio crítico en FAIL.`
-
+// --- gemini: paso 1 extracción, paso 2 evaluación con la ficha UGEL 06 ---
+async function gemini(payload: object) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            decision: { type: 'STRING', enum: ['APPROVED', 'NEEDS_REVISION', 'MANUAL_REVIEW'] },
-            overall_score: { type: 'INTEGER' }, confidence: { type: 'NUMBER' }, summary: { type: 'STRING' },
-            strengths: { type: 'ARRAY', items: { type: 'STRING' } },
-            improvements: { type: 'ARRAY', items: { type: 'STRING' } },
-            criteria: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
-              criterionCode: { type: 'STRING' }, criterionName: { type: 'STRING' }, score: { type: 'INTEGER' }, maxScore: { type: 'INTEGER' },
-              status: { type: 'STRING', enum: ['PASS', 'PARTIAL', 'FAIL'] }, confidence: { type: 'NUMBER' },
-              evidence: { type: 'ARRAY', items: { type: 'OBJECT', properties: { quote: { type: 'STRING' }, location: { type: 'STRING' } }, required: ['quote', 'location'] } },
-              feedback: { type: 'STRING' },
-            }, required: ['criterionCode', 'criterionName', 'score', 'maxScore', 'status', 'confidence', 'evidence', 'feedback'] } },
-            criticalFlags: { type: 'ARRAY', items: { type: 'STRING' } },
-          },
-          required: ['decision', 'overall_score', 'confidence', 'summary', 'strengths', 'improvements', 'criteria', 'criticalFlags'],
-        },
-      },
-    }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   })
   const body = await res.json() as any
   if (!res.ok) throw new Error(`gemini ${res.status}: ${JSON.stringify(body).slice(0, 300)}`)
-  const parsed = EvalSchema.parse(JSON.parse(body.candidates[0].content.parts[0].text))
-  if (parsed.confidence < 0.75) parsed.decision = 'MANUAL_REVIEW'
+  return JSON.parse(body.candidates[0].content.parts[0].text)
+}
+
+const DOC_KEYS = ['insumos', 'planificacion_anual', 'unidad_didactica', 'sesion_aprendizaje', 'instrumentos_evaluacion'] as const
+const ID_KEYS = ['ie', 'docente', 'nivel', 'area', 'grado_seccion', 'competencia', 'unidad', 'sesion'] as const
+
+const ExtractionSchema = z.object({
+  documentos_presentes: z.record(z.string(), z.boolean()),
+  identificacion: z.record(z.string(), z.string()),
+  observaciones: z.string(),
+  legible: z.boolean(),
+})
+
+async function extract(markdown: string) {
+  const parsed = ExtractionSchema.parse(await gemini({
+    contents: [{ parts: [{ text: `Eres un asistente de la UGEL 06 que prepara documentos de planificación docente para su evaluación. Analiza el siguiente documento extraído de la carpeta pedagógica de un docente y responde SOLO el JSON pedido, sin evaluar todavía.
+
+1. documentos_presentes: marca true/false qué documentos contiene: insumos (informe psicopedagógico/PEP o caracterización de estudiantes), planificacion_anual, unidad_didactica, sesion_aprendizaje, instrumentos_evaluacion (rúbricas, listas de cotejo, etc.).
+2. identificacion: extrae ie, docente, nivel, area, grado_seccion, competencia, unidad (título de la unidad), sesion (título de la sesión). Si un dato no aparece escribe exactamente "No consignado".
+3. observaciones: 1-3 frases sobre estructura, secciones presentes y calidad del texto extraído (tablas rotas, texto ilegible, etc.).
+4. legible: false solo si el contenido es mayormente ilegible o vacío.
+
+DOCUMENTO:
+${markdown.slice(0, 60000)}` }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'OBJECT',
+        properties: {
+          documentos_presentes: { type: 'OBJECT', properties: Object.fromEntries(DOC_KEYS.map(k => [k, { type: 'BOOLEAN' }])), required: [...DOC_KEYS] },
+          identificacion: { type: 'OBJECT', properties: Object.fromEntries(ID_KEYS.map(k => [k, { type: 'STRING' }])), required: [...ID_KEYS] },
+          observaciones: { type: 'STRING' },
+          legible: { type: 'BOOLEAN' },
+        },
+        required: ['documentos_presentes', 'identificacion', 'observaciones', 'legible'],
+      },
+    },
+  }))
   return parsed
+}
+
+// Ítems oficiales de la Sección II (dimensión y nombre fijos; el modelo solo valora)
+const ITEMS: [string, string][] = [
+  ['A', 'Informe psicopedagógico y PEP de estudiantes con discapacidad'], ['A', 'Caracterización de la población estudiantil'],
+  ['B', 'Organización de los propósitos de aprendizaje'], ['B', 'Uso de materiales y recursos educativos'], ['B', 'Evaluación para y del aprendizaje'],
+  ['C', 'Coherencia interna de la unidad'], ['C', 'Situación significativa'], ['C', 'Criterios de evaluación'], ['C', 'Secuencia de sesiones'],
+  ['C', 'Evidencias de aprendizaje'], ['C', 'Instrumento de evaluación'], ['C', 'Prevención ante emergencias/desastres'],
+  ['D', 'Coherencia con la unidad didáctica'], ['D', 'Enfoque del área y propósito'], ['D', 'Acompañamiento socioemocional'],
+  ['D', 'Uso de materiales del MINEDU'], ['D', 'Atención a la diversidad'],
+]
+const DESEMPENOS = [
+  'Involucra activamente a los estudiantes en el proceso de aprendizaje',
+  'Promueve el razonamiento, la creatividad y/o el pensamiento crítico',
+  'Evalúa el progreso de los aprendizajes para retroalimentar y adecuar la enseñanza',
+  'Propicia un ambiente de respeto y proximidad',
+  'Regula positivamente el comportamiento de los estudiantes',
+]
+const VAL = ['LOGRADO', 'PROCESO', 'INICIO', 'NO_APLICA', 'NO_EVIDENCIADO'] as const
+// NO_EVIDENCIADO no puntúa: la ficha lo trata como oportunidad de mejora, no como juicio final
+const PUNTAJE: Record<string, number | null> = { LOGRADO: 3, PROCESO: 2, INICIO: 1, NO_EVIDENCIADO: null, NO_APLICA: null }
+
+const FichaSchema = z.object({
+  confidence: z.number(),
+  resumen: z.string(),
+  fortalezas: z.array(z.string()),
+  oportunidades: z.array(z.string()),
+  items: z.array(z.object({
+    numero: z.number(), valoracion: z.enum(VAL), evidencia: z.string(), recomendacion: z.string(),
+  })).length(17),
+  desempenos: z.array(z.object({
+    numero: z.number(), valoracion: z.enum(VAL.filter(v => v !== 'NO_APLICA') as ['LOGRADO', 'PROCESO', 'INICIO', 'NO_EVIDENCIADO']),
+    evidencia_diseno: z.string(), recomendacion: z.string(),
+  })).length(5),
+  recomendaciones_priorizadas: z.array(z.string()).max(5),
+  compromisos_docente: z.array(z.string()),
+  compromisos_especialista: z.array(z.string()),
+})
+
+export async function evaluate(markdown: string, ctx: { type: string; subject: string; grade: string; previous?: string }) {
+  const extraction = await extract(markdown)
+  if (!extraction.legible) {
+    return {
+      decision: 'MANUAL_REVIEW' as const, overall_score: 0, confidence: 0,
+      summary: `El documento no pudo leerse con claridad (${extraction.observaciones}). Un especialista lo revisará.`,
+      strengths: [] as string[], improvements: [] as string[], criteria: { extraccion: extraction } as object, criticalFlags: ['ILLEGIBLE_DOCUMENT'],
+    }
+  }
+
+  const parsed = FichaSchema.parse(await gemini({
+    systemInstruction: { parts: [{ text: fichaPrompt }] },
+    contents: [{ parts: [{ text: `CONTEXTO DE LA ENTREGA: tipo ${ctx.type}, curso "${ctx.subject}", grado ${ctx.grade}.
+
+RESULTADO DE LA EXTRACCIÓN PREVIA (documentos presentes y datos de identificación ya verificados; úsalo para decidir "No evidenciado" y "No aplica"):
+${JSON.stringify(extraction)}
+
+${ctx.previous ? `EVALUACIÓN ANTERIOR (esta entrega es una corrección: compara y reconoce explícitamente las mejoras): ${ctx.previous}\n` : ''}
+DOCUMENTO DEL DOCENTE (Markdown extraído):
+${markdown.slice(0, 60000)}
+
+Aplica tu flujo de trabajo interno y responde SOLO el JSON pedido:
+- items: los 17 ítems de la Sección II en orden (numero 1 a 17). valoracion: LOGRADO/PROCESO/INICIO según la rúbrica; NO_EVIDENCIADO si el documento requerido no está presente; NO_APLICA solo en el ítem 1 sin estudiantes con discapacidad. evidencia: cita textual o referencia de sección del documento ("No evidenciado en el documento" si falta). recomendacion: breve y accionable.
+- desempenos: los 5 desempeños de la Sección III en orden (numero 1 a 5), valorando SOLO el diseño de la sesión. evidencia_diseno: qué prevé (o no) la sesión.
+- resumen: 3-5 frases formativas dirigidas al docente (fortalezas, dificultades y siguiente paso), recordando que la valoración de la Sección III requiere observación de aula.
+- fortalezas y oportunidades: listas específicas.
+- recomendaciones_priorizadas: máximo 5, accionables, en orden de prioridad.
+- compromisos_docente y compromisos_especialista: 2-3 compromisos sugeridos cada uno.
+- confidence: 0-1, tu certeza global (baja si el texto extraído está incompleto o ambiguo).` }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'OBJECT',
+        properties: {
+          confidence: { type: 'NUMBER' }, resumen: { type: 'STRING' },
+          fortalezas: { type: 'ARRAY', items: { type: 'STRING' } },
+          oportunidades: { type: 'ARRAY', items: { type: 'STRING' } },
+          items: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+            numero: { type: 'INTEGER' }, valoracion: { type: 'STRING', enum: [...VAL] },
+            evidencia: { type: 'STRING' }, recomendacion: { type: 'STRING' },
+          }, required: ['numero', 'valoracion', 'evidencia', 'recomendacion'] } },
+          desempenos: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+            numero: { type: 'INTEGER' }, valoracion: { type: 'STRING', enum: VAL.filter(v => v !== 'NO_APLICA') },
+            evidencia_diseno: { type: 'STRING' }, recomendacion: { type: 'STRING' },
+          }, required: ['numero', 'valoracion', 'evidencia_diseno', 'recomendacion'] } },
+          recomendaciones_priorizadas: { type: 'ARRAY', items: { type: 'STRING' } },
+          compromisos_docente: { type: 'ARRAY', items: { type: 'STRING' } },
+          compromisos_especialista: { type: 'ARRAY', items: { type: 'STRING' } },
+        },
+        required: ['confidence', 'resumen', 'fortalezas', 'oportunidades', 'items', 'desempenos', 'recomendaciones_priorizadas', 'compromisos_docente', 'compromisos_especialista'],
+      },
+    },
+  }))
+
+  // Puntajes calculados en el servidor: no se confía en la aritmética del modelo
+  const items = parsed.items
+    .sort((a, b) => a.numero - b.numero)
+    .map((it, i) => ({ ...it, dimension: ITEMS[i][0], nombre: ITEMS[i][1], puntaje: PUNTAJE[it.valoracion] }))
+  const aplicables = items.filter(it => it.puntaje !== null)
+  const puntaje_total = aplicables.reduce((s, it) => s + it.puntaje!, 0)
+  const puntaje_max = aplicables.length * 3
+  const promedio = puntaje_max ? puntaje_total / (aplicables.length) : 0
+  const nivel_global = promedio >= 2.34 ? 'LOGRADO' : promedio >= 1.67 ? 'PROCESO' : 'INICIO'
+  const desempenos = parsed.desempenos
+    .sort((a, b) => a.numero - b.numero)
+    .map((d, i) => ({ ...d, nombre: DESEMPENOS[i] }))
+
+  const decision = parsed.confidence < 0.75 ? 'MANUAL_REVIEW' as const
+    : nivel_global === 'LOGRADO' ? 'APPROVED' as const : 'NEEDS_REVISION' as const
+
+  const ficha = {
+    version: RUBRIC_VERSION,
+    extraccion: extraction,
+    items, desempenos,
+    puntaje_total, puntaje_max, promedio: Math.round(promedio * 100) / 100, nivel_global,
+    recomendaciones_priorizadas: parsed.recomendaciones_priorizadas,
+    compromisos_docente: parsed.compromisos_docente,
+    compromisos_especialista: parsed.compromisos_especialista,
+  }
+
+  return {
+    decision, confidence: parsed.confidence, summary: parsed.resumen,
+    overall_score: puntaje_max ? Math.round((puntaje_total / puntaje_max) * 100) : 0,
+    strengths: parsed.fortalezas, improvements: parsed.oportunidades,
+    criteria: ficha as object,
+    criticalFlags: items.filter(it => it.valoracion === 'NO_EVIDENCIADO').map(it => `NO_EVIDENCIADO_ITEM_${it.numero}`),
+  }
 }
 
 // --- pipeline compartido subida/resubida ---
@@ -132,7 +246,7 @@ async function processUpload(profile: any, file: Express.Multer.File, artifact: 
   try {
     markdown = await toMarkdown(file.buffer, file.originalname)
     if (markdown.trim().length < 50) {
-      evaluation = { decision: 'MANUAL_REVIEW' as const, overall_score: 0, confidence: 0, summary: 'El documento está vacío o no se pudo leer su contenido. Un especialista lo revisará.', strengths: [], improvements: [], criteria: [], criticalFlags: ['EMPTY_DOCUMENT'] }
+      evaluation = { decision: 'MANUAL_REVIEW' as const, overall_score: 0, confidence: 0, summary: 'El documento está vacío o no se pudo leer su contenido. Un especialista lo revisará.', strengths: [] as string[], improvements: [] as string[], criteria: {} as object, criticalFlags: ['EMPTY_DOCUMENT'] }
     } else {
       const { data: subj } = await db.from('subjects').select('name').eq('id', artifact.subject_id).single()
       const { data: grp } = await db.from('student_groups').select('grade').eq('id', artifact.group_id).single()
@@ -148,7 +262,7 @@ async function processUpload(profile: any, file: Express.Multer.File, artifact: 
   await db.from('artifact_versions').update({ status, markdown }).eq('id', ver.id)
   await db.from('artifacts').update({ status, current_version: version, updated_at: new Date().toISOString() }).eq('id', artifact.id)
   const { data: [ev] } = await db.from('evaluations').insert({
-    artifact_version_id: ver.id, model_name: GEMINI_MODEL, prompt_version: PROMPT_VERSION, rubric_version: rubric.version,
+    artifact_version_id: ver.id, model_name: GEMINI_MODEL, prompt_version: PROMPT_VERSION, rubric_version: RUBRIC_VERSION,
     decision: status, overall_score: evaluation.overall_score, confidence: evaluation.confidence, summary: evaluation.summary,
     strengths: evaluation.strengths, improvements: evaluation.improvements, criteria: evaluation.criteria, critical_flags: evaluation.criticalFlags,
   }).select() as any
