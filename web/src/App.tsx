@@ -118,6 +118,7 @@ export default function App() {
     const load = async (userId?: string) => {
       if (!userId) { setProfile(null); setLoading(false); return }
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+      if (!data) { await supabase.auth.signOut(); setProfile(null); setLoading(false); return }
       setProfile(data); setLoading(false)
     }
     supabase.auth.getSession().then(({ data }) => load(data.session?.user.id))
