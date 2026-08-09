@@ -190,9 +190,11 @@ export type MapaColegio = {
   longitude: number | null
   total_students: number
   average_score_1_to_4: number | null
-  dominant: MapaBucket
+  dominant: MapaBucket | null
   distribution: MapaDistribution
   courses: MapaCourse[]
+  /** true = colegio de demo (sintético); false = colegio real (MINEDU). */
+  synthetic: boolean
 }
 export type MapaDistrito = {
   district: string
