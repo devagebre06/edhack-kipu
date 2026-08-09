@@ -61,9 +61,12 @@ const distritoStyle = (feature?: Feature<Geometry, { distrito: string }>): PathO
   const color = DISTRICT_PALETTE[feature?.properties?.distrito ?? ''] ?? NO_DISTRICT
   return { color, weight: 2, fillColor: color, fillOpacity: 0.1 }
 }
-// Click en un distrito → hacer zoom a su área (fitBounds), sin mostrar caja.
+// Nombre del distrito como etiqueta permanente centrada + click → zoom al área.
 const makeOnEachDistrito = (getMap: () => LeafletMap | null) =>
-  (_feature: Feature<Geometry, { nombre: string }>, layer: Layer) => {
+  (feature: Feature<Geometry, { nombre: string }>, layer: Layer) => {
+    if (feature.properties?.nombre) {
+      layer.bindTooltip(feature.properties.nombre, { permanent: true, direction: 'center', className: 'distrito-label' })
+    }
     layer.on('click', () => {
       const map = getMap()
       if (map) map.fitBounds((layer as Polygon).getBounds(), { padding: [24, 24] })
