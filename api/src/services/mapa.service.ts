@@ -98,7 +98,23 @@ export async function buildMapa(courseKey?: string) {
     })
   }
 
-  const colegios = [...schools.values()].map((s) => ({
+  type OutColegio = {
+    school_key: string
+    school_name: string
+    district: string
+    network_key: string
+    network_name: string
+    latitude: number | null
+    longitude: number | null
+    total_students: number
+    average_score_1_to_4: number | null
+    dominant: keyof typeof BUCKETS | null
+    distribution: ReturnType<typeof distribution>
+    courses: Array<Record<string, unknown>>
+    synthetic: boolean
+  }
+
+  const colegios: OutColegio[] = [...schools.values()].map((s) => ({
     school_key: s.school_key,
     school_name: s.school_name,
     district: s.district,
@@ -111,7 +127,44 @@ export async function buildMapa(courseKey?: string) {
     dominant: dominant(s.critico, s.intermedio, s.logrado),
     distribution: distribution(s.critico, s.intermedio, s.logrado, s.total),
     courses: s.courses,
+    synthetic: false, // se corrige abajo con el flag real de la tabla
   }))
+
+  // Un solo fetch de la tabla `colegios`: sirve para (1) marcar cada colegio como
+  // real o sintético y (2) armar la capa base — todos los colegios con
+  // coordenadas, aunque no tengan evaluación para el curso filtrado (se pintan
+  // "sin datos"). Así el mapa muestra toda la red real de la UGEL 06.
+  const { data: baseData, error: baseErr } = await db
+    .from('colegios')
+    .select('codigo, nombre, latitud, longitud, es_sintetico, canales(codigo, nombre, distrito)')
+  if (baseErr) throw baseErr
+  type BaseRow = {
+    codigo: string; nombre: string; latitud: number | null; longitud: number | null; es_sintetico: boolean
+    canales: { codigo: string; nombre: string; distrito: string | null } | null
+  }
+  const base = (baseData ?? []) as unknown as BaseRow[]
+  const syntheticByCodigo = new Map(base.map((b) => [b.codigo, b.es_sintetico]))
+  for (const c of colegios) c.synthetic = syntheticByCodigo.get(c.school_key) ?? false
+
+  const evaluados = new Set(colegios.map((c) => c.school_key))
+  for (const b of base) {
+    if (evaluados.has(b.codigo) || b.latitud == null || b.longitud == null) continue
+    colegios.push({
+      school_key: b.codigo,
+      school_name: b.nombre,
+      district: b.canales?.distrito ?? '—',
+      network_key: b.canales?.codigo ?? '',
+      network_name: b.canales?.nombre ?? '',
+      latitude: b.latitud,
+      longitude: b.longitud,
+      total_students: 0,
+      average_score_1_to_4: null,
+      dominant: null,
+      distribution: distribution(0, 0, 0, 0),
+      courses: [],
+      synthetic: b.es_sintetico,
+    })
+  }
 
   // Roll-up por distrito para vista choropleth / resumen.
   const distMap = new Map<string, { district: string; total: number; critico: number; intermedio: number; logrado: number; schools: number }>()
@@ -133,7 +186,7 @@ export async function buildMapa(courseKey?: string) {
     buckets: BUCKETS,
     totals: {
       colegios: colegios.length,
-      distritos: distritos.length,
+      distritos: new Set(colegios.map((c) => c.district)).size,
       evaluaciones: colegios.reduce((n, c) => n + c.total_students, 0),
     },
     colegios,
