@@ -25,6 +25,12 @@ export function postForm<T>(path: string, form: FormData): Promise<T> {
 export function postJson<T>(path: string, payload: unknown): Promise<T> {
   return request<T>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
 }
+export function patchJson<T>(path: string, payload: unknown): Promise<T> {
+  return request<T>(path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+}
 export function getJson<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'GET' })
+}
+export function delJson<T>(path: string): Promise<T> {
+  return request<T>(path, { method: 'DELETE' })
 }

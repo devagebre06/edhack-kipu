@@ -1,23 +1,30 @@
 import type React from 'react'
+import {
+  Table as UITable, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from './ui/table'
 
+/** Tabla de datos simple (cabeceras + filas). Envuelve las primitivas de ui/table. */
 export function Table({ head, rows, empty }: { head: string[]; rows: React.ReactNode[][]; empty: string }) {
-  if (!rows.length) return <p className="rounded-lg border border-dashed border-line bg-surface p-6 text-center text-sm text-ink-soft">{empty}</p>
+  if (!rows.length)
+    return (
+      <p className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">{empty}</p>
+    )
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-ink-soft">
-            {head.map(h => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}
-          </tr>
-        </thead>
-        <tbody>
+    <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+      <UITable>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            {head.map((h) => <TableHead key={h}>{h}</TableHead>)}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map((r, i) => (
-            <tr key={i} className="border-b border-line last:border-0">
-              {r.map((c, j) => <td key={j} className="px-4 py-2.5">{c}</td>)}
-            </tr>
+            <TableRow key={i}>
+              {r.map((c, j) => <TableCell key={j} className="text-sm">{c}</TableCell>)}
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </UITable>
     </div>
   )
 }

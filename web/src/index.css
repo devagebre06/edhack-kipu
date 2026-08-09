@@ -1,28 +1,241 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@theme {
-  --color-bg: oklch(0.985 0.002 60);
-  --color-surface: oklch(1 0 0);
-  --color-ink: oklch(0.24 0.01 50);
-  --color-ink-soft: oklch(0.45 0.01 50);
-  --color-line: oklch(0.9 0.005 60);
-  --color-brand: oklch(0.55 0.15 35);
-  --color-brand-deep: oklch(0.45 0.14 35);
-  --color-nav: oklch(0.28 0.04 250);
-  --color-nav-soft: oklch(0.36 0.045 250);
-  --color-ok: oklch(0.48 0.12 150);
-  --color-ok-bg: oklch(0.95 0.03 150);
-  --color-warn: oklch(0.5 0.11 75);
-  --color-warn-bg: oklch(0.96 0.04 85);
-  --color-bad: oklch(0.5 0.18 25);
-  --color-bad-bg: oklch(0.95 0.03 25);
-  --font-sans: "Inter", system-ui, sans-serif;
+/* Modo oscuro por clase en <html> (la aplica el ThemeProvider). */
+@custom-variant dark (&:is(.dark *));
+
+/* ──────────────────────────────────────────────────────────────
+   Kipu — sistema visual (tema claro, registro producto).
+   Identidad conservada: acento terracota, navegación azul profundo,
+   fondo claro obligado por la escena (laptops de sala de profesores,
+   luz de día). Refinado a tokens semánticos estilo shadcn.
+   ────────────────────────────────────────────────────────────── */
+
+/* Tokens crudos (se emiten como variables CSS para refs en runtime, p. ej. Recharts). */
+:root {
+  --radius: 0.625rem;
+
+  /* Superficies e ink */
+  --background: oklch(0.985 0.003 60);
+  --foreground: oklch(0.26 0.012 55);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.26 0.012 55);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.26 0.012 55);
+
+  /* Acento de marca (terracota) — solo acciones primarias / selección */
+  --primary: oklch(0.55 0.15 35);
+  --primary-foreground: oklch(0.99 0.008 40);
+
+  /* Neutrales de apoyo */
+  --secondary: oklch(0.965 0.004 60);
+  --secondary-foreground: oklch(0.30 0.012 55);
+  --muted: oklch(0.965 0.004 60);
+  --muted-foreground: oklch(0.475 0.012 55);
+  --accent: oklch(0.955 0.012 45);
+  --accent-foreground: oklch(0.30 0.02 40);
+
+  /* Bordes / inputs / foco */
+  --border: oklch(0.915 0.004 60);
+  --input: oklch(0.90 0.005 60);
+  --ring: oklch(0.55 0.15 35);
+
+  /* Estados semánticos */
+  --destructive: oklch(0.55 0.19 27);
+  --destructive-foreground: oklch(0.99 0.008 25);
+  --success: oklch(0.52 0.13 155);
+  --success-foreground: oklch(0.99 0.01 155);
+  --success-muted: oklch(0.955 0.03 155);
+  --warning: oklch(0.55 0.11 75);
+  --warning-foreground: oklch(0.30 0.05 75);
+  --warning-muted: oklch(0.96 0.045 85);
+
+  /* Navegación (segundo neutro, azul profundo) */
+  --sidebar: oklch(0.28 0.04 250);
+  --sidebar-foreground: oklch(0.93 0.012 250);
+  --sidebar-primary: oklch(0.62 0.15 38);
+  --sidebar-primary-foreground: oklch(0.99 0.008 40);
+  --sidebar-accent: oklch(0.355 0.045 250);
+  --sidebar-accent-foreground: oklch(0.98 0.006 250);
+  --sidebar-border: oklch(0.34 0.042 250);
+  --sidebar-ring: oklch(0.62 0.15 38);
+
+  /* Gráficos (Recharts) */
+  --chart-1: oklch(0.55 0.15 35);
+  --chart-2: oklch(0.45 0.09 250);
+  --chart-3: oklch(0.52 0.13 155);
+  --chart-4: oklch(0.6 0.12 75);
+  --chart-5: oklch(0.5 0.12 300);
 }
 
-html { background: var(--color-bg); color: var(--color-ink); }
-body { margin: 0; font-family: var(--font-sans); }
-h1, h2, h3 { text-wrap: balance; }
+/* ── Modo oscuro ──────────────────────────────────────────────
+   Se usa `:root.dark` (especificidad 0,2,0) para ganarle sin
+   ambigüedad tanto a `:root` como a los tokens heredados de @theme.
+   Se conserva la identidad: acento terracota (algo más brillante
+   para contraste), navegación azul muy profunda, neutros cálidos. */
+:root.dark {
+  --background: oklch(0.185 0.008 55);
+  --foreground: oklch(0.95 0.004 55);
+  --card: oklch(0.225 0.009 55);
+  --card-foreground: oklch(0.95 0.004 55);
+  --popover: oklch(0.225 0.009 55);
+  --popover-foreground: oklch(0.95 0.004 55);
+
+  --primary: oklch(0.63 0.15 38);
+  --primary-foreground: oklch(0.99 0.008 40);
+
+  --secondary: oklch(0.27 0.01 55);
+  --secondary-foreground: oklch(0.92 0.004 55);
+  --muted: oklch(0.27 0.01 55);
+  --muted-foreground: oklch(0.70 0.011 55);
+  --accent: oklch(0.30 0.015 45);
+  --accent-foreground: oklch(0.95 0.004 55);
+
+  --border: oklch(0.32 0.008 55);
+  --input: oklch(0.36 0.008 55);
+  --ring: oklch(0.63 0.15 38);
+
+  --destructive: oklch(0.63 0.19 26);
+  --destructive-foreground: oklch(0.98 0.01 25);
+  --success: oklch(0.64 0.14 155);
+  --success-foreground: oklch(0.14 0.02 155);
+  --success-muted: oklch(0.30 0.055 155);
+  --warning: oklch(0.74 0.13 78);
+  --warning-foreground: oklch(0.90 0.06 85);
+  --warning-muted: oklch(0.31 0.05 80);
+
+  --sidebar: oklch(0.155 0.018 250);
+  --sidebar-foreground: oklch(0.88 0.014 250);
+  --sidebar-primary: oklch(0.65 0.15 38);
+  --sidebar-primary-foreground: oklch(0.99 0.008 40);
+  --sidebar-accent: oklch(0.26 0.03 250);
+  --sidebar-accent-foreground: oklch(0.96 0.006 250);
+  --sidebar-border: oklch(0.24 0.025 250);
+  --sidebar-ring: oklch(0.65 0.15 38);
+
+  --chart-1: oklch(0.66 0.16 38);
+  --chart-2: oklch(0.62 0.12 250);
+  --chart-3: oklch(0.66 0.14 155);
+  --chart-4: oklch(0.74 0.13 78);
+  --chart-5: oklch(0.64 0.14 300);
+
+  /* Tokens heredados (mismas superficies que los nuevos, para las vistas
+     y refs en runtime que aún los usan). */
+  --color-bg: oklch(0.185 0.008 55);
+  --color-surface: oklch(0.225 0.009 55);
+  --color-ink: oklch(0.95 0.004 55);
+  --color-ink-soft: oklch(0.70 0.011 55);
+  --color-line: oklch(0.32 0.008 55);
+  --color-brand: oklch(0.63 0.15 38);
+  --color-brand-deep: oklch(0.55 0.14 38);
+  --color-nav: oklch(0.155 0.018 250);
+  --color-nav-soft: oklch(0.26 0.03 250);
+  --color-ok: oklch(0.64 0.14 155);
+  --color-ok-bg: oklch(0.30 0.055 155);
+  --color-warn: oklch(0.74 0.13 78);
+  --color-warn-bg: oklch(0.31 0.05 80);
+  --color-bad: oklch(0.63 0.19 26);
+  --color-bad-bg: oklch(0.28 0.06 26);
+}
+
+/* `color-scheme` alinea controles nativos (scrollbars, date/time pickers). */
+:root { color-scheme: light; }
+:root.dark { color-scheme: dark; }
+
+/* Mapeo semántico → utilidades Tailwind (bg-background, text-muted-foreground, …). */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+/* Tokens heredados (compat con componentes/páginas aún sin migrar). */
+@theme {
+  --color-bg: oklch(0.985 0.003 60);
+  --color-surface: oklch(1 0 0);
+  --color-ink: oklch(0.26 0.012 55);
+  --color-ink-soft: oklch(0.475 0.012 55);
+  --color-line: oklch(0.915 0.004 60);
+  --color-brand: oklch(0.55 0.15 35);
+  --color-brand-deep: oklch(0.47 0.14 35);
+  --color-nav: oklch(0.28 0.04 250);
+  --color-nav-soft: oklch(0.355 0.045 250);
+  --color-ok: oklch(0.52 0.13 155);
+  --color-ok-bg: oklch(0.955 0.03 155);
+  --color-warn: oklch(0.55 0.11 75);
+  --color-warn-bg: oklch(0.96 0.045 85);
+  --color-bad: oklch(0.55 0.19 27);
+  --color-bad-bg: oklch(0.955 0.03 27);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+  }
+  html {
+    background: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1, h2, h3 { text-wrap: balance; letter-spacing: -0.011em; }
+  p { text-wrap: pretty; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

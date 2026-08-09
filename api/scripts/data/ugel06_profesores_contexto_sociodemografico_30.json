@@ -1,0 +1,788 @@
+{
+  "dataset_key": "ugel06_profesores_contexto_sociodemografico_v1",
+  "data_type": "synthetic_test_data",
+  "join_key": "school_key",
+  "source_datasets": {
+    "professors": "ugel06_profesores_muestra_v1",
+    "school_context": "ugel06_redes_muestra_v1"
+  },
+  "scope": {
+    "ugel_key": "ugel_06",
+    "ugel_name": "UGEL 06",
+    "selected_networks": 3,
+    "selected_schools": 15,
+    "selected_professors": 30
+  },
+  "summary": {
+    "total_professor_context_pairs": 30,
+    "professors_per_school": 2,
+    "courses": [
+      "Matemática",
+      "Comunicación"
+    ]
+  },
+  "validation": {
+    "all_professors_matched": true,
+    "unmatched_professor_ids": [],
+    "all_selected_schools_have_two_professors": true,
+    "all_selected_schools_have_math_and_communication": true
+  },
+  "professor_context_pairs": [
+    {
+      "pair_id": "98000007_ugel06_rei01_cl300720",
+      "professor": {
+        "dni": "98000007",
+        "full_name": "Claudia Isabel Rojas Medina",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl300720",
+        "codigo_local": "300720",
+        "school_name": "219 CESAR AUGUSTO",
+        "address": "MZ M1 LOTE 1 MAGDA PORTAL CIENEGUILLA",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000008_ugel06_rei01_cl300720",
+      "professor": {
+        "dni": "98000008",
+        "full_name": "Jorge Eduardo Salazar Peña",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl300720",
+        "codigo_local": "300720",
+        "school_name": "219 CESAR AUGUSTO",
+        "address": "MZ M1 LOTE 1 MAGDA PORTAL CIENEGUILLA",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000009_ugel06_rei01_cl300796",
+      "professor": {
+        "dni": "98000009",
+        "full_name": "Diana Carolina Flores Núñez",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl300796",
+        "codigo_local": "300796",
+        "school_name": "157",
+        "address": "Calle los Laureles MZ H lt 1 Huaycan",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000010_ugel06_rei01_cl300796",
+      "professor": {
+        "dni": "98000010",
+        "full_name": "Luis Fernando Vega Ortiz",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl300796",
+        "codigo_local": "300796",
+        "school_name": "157",
+        "address": "Calle los Laureles MZ H lt 1 Huaycan",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000001_ugel06_rei01_cl752547",
+      "professor": {
+        "dni": "98000001",
+        "full_name": "María Elena Torres Salazar",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl752547",
+        "codigo_local": "752547",
+        "school_name": "ANGELITOS DE MARIA",
+        "address": "AVENIDA LOS INDUSTRIALES S/N",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000002_ugel06_rei01_cl752547",
+      "professor": {
+        "dni": "98000002",
+        "full_name": "Carlos Alberto Mendoza Ríos",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl752547",
+        "codigo_local": "752547",
+        "school_name": "ANGELITOS DE MARIA",
+        "address": "AVENIDA LOS INDUSTRIALES S/N",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000003_ugel06_rei01_cl777251",
+      "professor": {
+        "dni": "98000003",
+        "full_name": "Rosa Patricia Fernández León",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl777251",
+        "codigo_local": "777251",
+        "school_name": "PAMPAS TINAJAS",
+        "address": "Lote 1",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000004_ugel06_rei01_cl777251",
+      "professor": {
+        "dni": "98000004",
+        "full_name": "José Luis Ramírez Castro",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl777251",
+        "codigo_local": "777251",
+        "school_name": "PAMPAS TINAJAS",
+        "address": "Lote 1",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000005_ugel06_rei01_cl780102",
+      "professor": {
+        "dni": "98000005",
+        "full_name": "Ana Lucía Paredes Soto",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl780102",
+        "codigo_local": "780102",
+        "school_name": "MI PEQUEÑO MUNDO",
+        "address": "Calle Giusti S/N Mz F1 Lote 1 Zona G",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000006_ugel06_rei01_cl780102",
+      "professor": {
+        "dni": "98000006",
+        "full_name": "Miguel Ángel Herrera Vargas",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei01",
+        "network_number": 1,
+        "network_name": "REI 01",
+        "district": "Cieneguilla",
+        "school_key": "ugel06_rei01_cl780102",
+        "codigo_local": "780102",
+        "school_name": "MI PEQUEÑO MUNDO",
+        "address": "Calle Giusti S/N Mz F1 Lote 1 Zona G",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000013_ugel06_rei02_cl307397",
+      "professor": {
+        "dni": "98000013",
+        "full_name": "Gabriela Sofía Medina Campos",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl307397",
+        "codigo_local": "307397",
+        "school_name": "130 0SCAR EDUARDO BRAVO RATTO",
+        "address": "AV. LA MOLINA 4352",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000014_ugel06_rei02_cl307397",
+      "professor": {
+        "dni": "98000014",
+        "full_name": "Eduardo Martín Aguilar León",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl307397",
+        "codigo_local": "307397",
+        "school_name": "130 0SCAR EDUARDO BRAVO RATTO",
+        "address": "AV. LA MOLINA 4352",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000017_ugel06_rei02_cl307439",
+      "professor": {
+        "dni": "98000017",
+        "full_name": "Natalia Beatriz Vargas Lozano",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl307439",
+        "codigo_local": "307439",
+        "school_name": "121 VIRGEN DE FÁTIMA",
+        "address": "Calle Uno Santa María Eufrasia s/n",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000018_ugel06_rei02_cl307439",
+      "professor": {
+        "dni": "98000018",
+        "full_name": "Fernando Javier Castillo Ríos",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl307439",
+        "codigo_local": "307439",
+        "school_name": "121 VIRGEN DE FÁTIMA",
+        "address": "Calle Uno Santa María Eufrasia s/n",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000015_ugel06_rei02_cl307463",
+      "professor": {
+        "dni": "98000015",
+        "full_name": "Verónica Alejandra Cabrera Silva",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl307463",
+        "codigo_local": "307463",
+        "school_name": "140 VIRGEN DE LA MERCED",
+        "address": "CallLos Abedules y Av. Los Olivos",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000016_ugel06_rei02_cl307463",
+      "professor": {
+        "dni": "98000016",
+        "full_name": "Sergio Antonio Morales Fuentes",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl307463",
+        "codigo_local": "307463",
+        "school_name": "140 VIRGEN DE LA MERCED",
+        "address": "CallLos Abedules y Av. Los Olivos",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000019_ugel06_rei02_cl307482",
+      "professor": {
+        "dni": "98000019",
+        "full_name": "Mónica Patricia Espinoza Peña",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl307482",
+        "codigo_local": "307482",
+        "school_name": "136",
+        "address": "Calle Las Bermudas Mz E1 Lt 1",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000020_ugel06_rei02_cl307482",
+      "professor": {
+        "dni": "98000020",
+        "full_name": "Hugo Andrés Benavides Soto",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl307482",
+        "codigo_local": "307482",
+        "school_name": "136",
+        "address": "Calle Las Bermudas Mz E1 Lt 1",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000011_ugel06_rei02_cl719015",
+      "professor": {
+        "dni": "98000011",
+        "full_name": "Paola Andrea Castro Reyes",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl719015",
+        "codigo_local": "719015",
+        "school_name": "112",
+        "address": "CALLE ONTARIO S/N RINCONADA",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000012_ugel06_rei02_cl719015",
+      "professor": {
+        "dni": "98000012",
+        "full_name": "Ricardo Alonso Navarro Cruz",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei02",
+        "network_number": 2,
+        "network_name": "REI 02",
+        "district": "La Molina",
+        "school_key": "ugel06_rei02_cl719015",
+        "codigo_local": "719015",
+        "school_name": "112",
+        "address": "CALLE ONTARIO S/N RINCONADA",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000023_ugel06_rei03_cl291730",
+      "professor": {
+        "dni": "98000023",
+        "full_name": "Cecilia Lorena Silva Paredes",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl291730",
+        "codigo_local": "291730",
+        "school_name": "N° 500 EL BOSQUE",
+        "address": "Av EL BOSQUE 210 - ATE",
+        "educational_levels": [
+          "Primaria"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000024_ugel06_rei03_cl291730",
+      "professor": {
+        "dni": "98000024",
+        "full_name": "Óscar Daniel Núñez Herrera",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl291730",
+        "codigo_local": "291730",
+        "school_name": "N° 500 EL BOSQUE",
+        "address": "Av EL BOSQUE 210 - ATE",
+        "educational_levels": [
+          "Primaria"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000021_ugel06_rei03_cl291768",
+      "professor": {
+        "dni": "98000021",
+        "full_name": "Elena Marisol Fuentes Castro",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl291768",
+        "codigo_local": "291768",
+        "school_name": "Nº 0074 FERNANDO BELAUNDE TERRY",
+        "address": "AV MARISCAL NIETO Nº 203 - ATE",
+        "educational_levels": [
+          "Primaria",
+          "Secundaria"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000022_ugel06_rei03_cl291768",
+      "professor": {
+        "dni": "98000022",
+        "full_name": "Raúl Ernesto Peña Salazar",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl291768",
+        "codigo_local": "291768",
+        "school_name": "Nº 0074 FERNANDO BELAUNDE TERRY",
+        "address": "AV MARISCAL NIETO Nº 203 - ATE",
+        "educational_levels": [
+          "Primaria",
+          "Secundaria"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000029_ugel06_rei03_cl292070",
+      "professor": {
+        "dni": "98000029",
+        "full_name": "Teresa del Pilar Lozano Cruz",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl292070",
+        "codigo_local": "292070",
+        "school_name": "N° 1136 JOHN F KENNEDY",
+        "address": "DIEGO FERNANDEZ 237- SALAMANCA - ATE",
+        "educational_levels": [
+          "Primaria",
+          "Secundaria"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000030_ugel06_rei03_cl292070",
+      "professor": {
+        "dni": "98000030",
+        "full_name": "Andrés Felipe Cabrera Torres",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl292070",
+        "codigo_local": "292070",
+        "school_name": "N° 1136 JOHN F KENNEDY",
+        "address": "DIEGO FERNANDEZ 237- SALAMANCA - ATE",
+        "educational_levels": [
+          "Primaria",
+          "Secundaria"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000025_ugel06_rei03_cl292522",
+      "professor": {
+        "dni": "98000025",
+        "full_name": "Patricia Milagros León Rojas",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl292522",
+        "codigo_local": "292522",
+        "school_name": "142 GRUMETE MEDINA",
+        "address": "CALLE ISAAC NEWTON MZ. H LT 5 y 6 - URB IND. SAN FCO",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000026_ugel06_rei03_cl292522",
+      "professor": {
+        "dni": "98000026",
+        "full_name": "Javier Alonso Soto Medina",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl292522",
+        "codigo_local": "292522",
+        "school_name": "142 GRUMETE MEDINA",
+        "address": "CALLE ISAAC NEWTON MZ. H LT 5 y 6 - URB IND. SAN FCO",
+        "educational_levels": [
+          "Inicial"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000027_ugel06_rei03_cl293767",
+      "professor": {
+        "dni": "98000027",
+        "full_name": "Lucía Fernanda Reyes Vargas",
+        "course_key": "matematica",
+        "course_name": "Matemática",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl293767",
+        "codigo_local": "293767",
+        "school_name": "NIÑITA MARÍA",
+        "address": "AV. LOS QUECHUAS 1220 - SALAMANCA",
+        "educational_levels": [
+          "Inicial",
+          "Cuna"
+        ]
+      }
+    },
+    {
+      "pair_id": "98000028_ugel06_rei03_cl293767",
+      "professor": {
+        "dni": "98000028",
+        "full_name": "Marco Antonio Campos Navarro",
+        "course_key": "comunicacion",
+        "course_name": "Comunicación",
+        "is_synthetic": true
+      },
+      "sociodemographic_context": {
+        "ugel_key": "ugel_06",
+        "ugel_name": "UGEL 06",
+        "network_key": "ugel06_rei03",
+        "network_number": 3,
+        "network_name": "REI 03",
+        "district": "Ate",
+        "school_key": "ugel06_rei03_cl293767",
+        "codigo_local": "293767",
+        "school_name": "NIÑITA MARÍA",
+        "address": "AV. LOS QUECHUAS 1220 - SALAMANCA",
+        "educational_levels": [
+          "Inicial",
+          "Cuna"
+        ]
+      }
+    }
+  ]
+}

@@ -11,9 +11,13 @@ export function getFicha(ev: Evaluation): Ficha | null {
   return !Array.isArray(c) && (c as Ficha)?.items ? (c as Ficha) : null
 }
 
-/** Devuelve los criterios legacy si la evaluación usa ese formato. */
+/** Devuelve los criterios legacy si la evaluación usa ese formato.
+ *  Normaliza campos opcionales (evidence/feedback) para que la vista nunca
+ *  reviente si un criterio viene incompleto (p. ej. data de demo). */
 export function getLegacyCriteria(ev: Evaluation): Criterion[] {
-  return Array.isArray(ev.criteria) ? ev.criteria : []
+  return Array.isArray(ev.criteria)
+    ? ev.criteria.map(c => ({ ...c, evidence: c.evidence ?? [], feedback: c.feedback ?? '' }))
+    : []
 }
 
 /** Diferencia de puntaje frente a una evaluación previa. */

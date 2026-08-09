@@ -22,6 +22,8 @@ SUPABASE_SERVICE_ROLE_KEY=...   # service role: omite RLS, ¡nunca lo expongas a
 | --- | --- | --- |
 | `npm run db:seed` | `seed.mjs` | Reinicia y siembra el demo completo: instituciones, usuarios, cursos, grupos, horarios, historial de evaluaciones, notas y alertas. Idempotente (borra antes de insertar). |
 | `npm run db:add-user` | `add-user.mjs` | Alta rápida de usuarios demo adicionales (upsert, no borra nada). |
+| `npm run db:poblacion` | `poblacion.mjs` | Puebla el modelo diagnóstico **UGEL 06** (tablas `ugel06_*`) desde `data/ugel06_60_rubricas_diagnosticas.json` y `data/ugel06_1500_evaluaciones.json`, siguiendo el orden de FK del diagrama. Idempotente. Requiere aplicar antes `supabase/migrations/002_ugel06_diagnostico.sql`. |
+| `npm run db:migrate -- <archivo.sql>` | `apply-migration.mjs` | Aplica un `.sql` (DDL) contra Postgres. Requiere `SUPABASE_DB_URL` en `.env` con la cadena del **Session pooler** (el service-role JWT no ejecuta DDL). Útil porque no hay `supabase` CLI ni `psql`. |
 
 También pueden correrse directo:
 

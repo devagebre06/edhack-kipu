@@ -10,8 +10,8 @@ export const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 // Registra una acción en la bitácora de auditoría (no bloquea el flujo principal).
 export const audit = (
   actor_id: string | null,
-  action: string,
-  entity_type?: string,
-  entity_id?: string,
+  accion: string,
+  entidad_tipo?: string,
+  entidad_id?: string,
   metadata: object = {},
-) => db.from('audit_logs').insert({ actor_id, action, entity_type, entity_id, metadata }).then(() => {})
+) => db.from('logs_auditoria').insert({ actor_id, accion, entidad_tipo, entidad_id, metadata }).then(() => {})

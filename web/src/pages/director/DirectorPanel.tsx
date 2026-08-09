@@ -14,9 +14,11 @@ export default function DirectorPanel() {
   const byTeacher = progressByTeacher(teachers, artifacts)
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <h1 className="text-2xl font-semibold">Panel general</h1>
-      <p className="mt-1 text-sm text-ink-soft">Resumen de evidencias docentes de tu institución.</p>
+    <div>
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Panel general</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Resumen de evidencias docentes de tu institución.</p>
+      </header>
 
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Docentes" value={teachers.length} />
@@ -35,14 +37,14 @@ export default function DirectorPanel() {
         <h2 className="mb-3 text-base font-semibold">Avance por docente</h2>
         <div className="space-y-2">
           {byTeacher.map(t => (
-            <div key={t.name} className="flex items-center gap-4 rounded-lg border border-line bg-surface px-4 py-3">
+            <div key={t.name} className="flex items-center gap-4 rounded-xl border bg-card px-4 py-3 shadow-xs">
               <span className="w-40 shrink-0 truncate text-sm font-medium">{t.name}</span>
               <div className="flex-1">
-                <div className="flex h-2 w-full overflow-hidden rounded-full bg-line">
-                  {t.pct !== null && <div className="h-full rounded-full bg-ok transition-all" style={{ width: `${t.pct}%` }} />}
+                <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
+                  {t.pct !== null && <div className="h-full rounded-full bg-success transition-all" style={{ width: `${t.pct}%` }} />}
                 </div>
               </div>
-              <span className="w-20 shrink-0 text-right text-sm text-ink-soft">
+              <span className="w-20 shrink-0 text-right text-sm text-muted-foreground">
                 {t.ok}/{t.total} {t.pct !== null ? `(${t.pct}%)` : ''}
               </span>
               <Badge
@@ -51,7 +53,7 @@ export default function DirectorPanel() {
               />
             </div>
           ))}
-          {!teachers.length && <p className="text-sm text-ink-soft">No hay docentes registrados.</p>}
+          {!teachers.length && <p className="text-sm text-muted-foreground">No hay docentes registrados.</p>}
         </div>
       </section>
     </div>

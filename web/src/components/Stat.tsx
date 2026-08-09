@@ -1,10 +1,17 @@
 import type React from 'react'
+import { cn } from '@/lib/utils'
+
+const TONE: Record<string, string> = {
+  ok: 'text-success',
+  warn: 'text-warning-foreground',
+  bad: 'text-destructive',
+}
 
 export function Stat({ label, value, tone }: { label: string; value: React.ReactNode; tone?: 'ok' | 'warn' | 'bad' }) {
   return (
-    <div className="rounded-lg border border-line bg-surface px-4 py-3">
-      <div className="text-sm text-ink-soft">{label}</div>
-      <div className={`text-2xl font-semibold ${tone === 'ok' ? 'text-ok' : tone === 'warn' ? 'text-warn' : tone === 'bad' ? 'text-bad' : ''}`}>{value}</div>
+    <div className="rounded-xl border bg-card px-4 py-3.5 shadow-xs">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={cn('mt-1 text-2xl font-semibold tabular-nums tracking-tight', tone && TONE[tone])}>{value}</div>
     </div>
   )
 }

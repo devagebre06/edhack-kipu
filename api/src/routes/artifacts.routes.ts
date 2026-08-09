@@ -2,11 +2,12 @@
 import { Router } from 'express'
 import multer from 'multer'
 import { MAX_MB } from '../config/env.ts'
-import { createArtifact, createArtifactVersion } from '../controllers/artifacts.controller.ts'
+import { createArtifact, createArtifactVersion, getArtifactFile } from '../controllers/artifacts.controller.ts'
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_MB * 1024 * 1024 } })
 
 export const artifactsRouter = Router()
 
+artifactsRouter.get('/versions/:versionId/file', getArtifactFile)
 artifactsRouter.post('/', upload.single('file'), createArtifact)
 artifactsRouter.post('/:id/versions', upload.single('file'), createArtifactVersion)

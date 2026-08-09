@@ -3,7 +3,7 @@
 // (artifact → versions → evaluations). Si esa forma cambia, se
 // corrige AQUÍ y ninguna vista se rompe.
 // ─────────────────────────────────────────────────────────────
-import type { Artifact, ArtifactStatus, ArtifactVersion, Evaluation } from '@/types'
+import type { Artifact, ArtifactContext, ArtifactStatus, ArtifactVersion, Evaluation } from '@/types'
 
 /** Versiones ordenadas de la más reciente a la más antigua. */
 export function sortedVersions(a: Artifact): ArtifactVersion[] {
@@ -46,6 +46,53 @@ export function allScores(list: Artifact[]): number[] {
 export function averageScore(list: Artifact[]): number | null {
   const s = allScores(list)
   return s.length ? Math.round(s.reduce((acc, x) => acc + x, 0) / s.length) : null
+}
+
+/** Contexto de contenido (IA) de la versión actual; el más reciente como respaldo. */
+export function latestContext(a: Artifact): ArtifactContext | undefined {
+  const ctxs = a.artifact_contexts ?? []
+  if (!ctxs.length) return undefined
+  const currentId = latestVersion(a)?.id
+  const match = currentId && ctxs.find(c => c.version_id === currentId)
+  const chosen = match || [...ctxs].sort((x, y) => +new Date(y.created_at) - +new Date(x.created_at))[0]
+  return chosen?.context
+}
+
+/** Aula/sección legible de la evidencia ("3° A"), o "—" si no hay. */
+export function classroomName(a: Artifact): string {
+  const g = a.student_groups
+  return g ? `${g.grade} ${g.name}`.trim() : '—'
+}
+
+/** ¿La versión actual de la entrega cuenta como válida (superó umbral y coherencia)? */
+export function isValid(a: Artifact): boolean {
+  return latestVersion(a)?.is_valid ?? false
+}
+
+/** Motivo por el que la entrega no es válida (apto para el docente), o undefined si lo es. */
+export function invalidReason(a: Artifact): string | undefined {
+  const v = latestVersion(a)
+  return v && v.is_valid === false ? (v.invalid_reason ?? undefined) : undefined
+}
+
+/** Una unidad de aprendizaje junto con las sesiones registradas dentro de ella. */
+export type UnitWithSessions = { unit: Artifact; sessions: Artifact[] }
+
+/**
+ * Agrupa las entregas del docente: cada unidad (MONTHLY_UNIT) con sus sesiones
+ * (DAILY_SESSION ligadas por `unit_id`), ordenadas de la más reciente a la más antigua.
+ */
+export function unitsWithSessions(list: Artifact[]): UnitWithSessions[] {
+  const byDateDesc = (x: Artifact, y: Artifact) =>
+    +new Date(y.created_at) - +new Date(x.created_at)
+  const sessions = list.filter(a => a.type === 'DAILY_SESSION')
+  return list
+    .filter(a => a.type === 'MONTHLY_UNIT')
+    .sort(byDateDesc)
+    .map(unit => ({
+      unit,
+      sessions: sessions.filter(s => s.unit_id === unit.unit_id).sort(byDateDesc),
+    }))
 }
 
 /** Conteos por estado para tarjetas de resumen. */

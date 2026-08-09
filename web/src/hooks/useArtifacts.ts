@@ -26,6 +26,24 @@ export function useTeacherUnits(teacherId: string) {
   })
 }
 
+/** Dictados del docente (curso + aula + periodo), para elegir al subir una unidad. */
+export function useTeacherDictados(teacherId: string) {
+  return useQuery({
+    queryKey: qk.dictados,
+    queryFn: () => api.db.dictadosByTeacher(teacherId),
+  })
+}
+
+/** URL firmada del PDF de una versión (temporal). `enabled` para no pedirla hasta abrir la card. */
+export function useArtifactFile(versionId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: qk.artifactFile(versionId ?? 'none'),
+    queryFn: () => api.files.artifactVersionUrl(versionId!),
+    enabled: !!versionId && enabled,
+    staleTime: 4 * 60 * 1000, // la URL firmada vive 5 min; refresca antes de expirar
+  })
+}
+
 /** Sube una evidencia nueva o una versión corregida y refresca las listas. */
 export function useSubmitArtifact() {
   const qc = useQueryClient()
