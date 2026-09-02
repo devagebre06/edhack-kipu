@@ -22,23 +22,46 @@ await db.from('contextos_ia').delete().not('unidad_id', 'is', null)   // context
 await db.from('sesiones').delete().eq('es_sintetico', true)
 await db.from('unidades').delete().eq('es_sintetico', true)
 await db.from('alertas').delete().eq('es_sintetico', true)
-await db.from('usuarios').delete().eq('es_sintetico', true).in('rol_id', [roles.director, roles.ugel])
+// Directores / especialistas previos: se borran de Auth (la fila de `usuarios`
+// cae por cascade), si no quedarían cuentas de login huérfanas.
+const { data: previos } = await db.from('usuarios').select('id').eq('es_sintetico', true).in('rol_id', [roles.director, roles.ugel])
+for (const u of previos ?? []) {
+  await db.from('logs_auditoria').update({ actor_id: null }).eq('actor_id', u.id)  // sin FK: se anula a mano
+  const { error } = await db.auth.admin.deleteUser(u.id)
+  if (error) throw new Error(`borrar cuenta ${u.id}: ${error.message}`)
+}
 
 // ── Periodos ordinarios (bimestres) ──────────────────────────────────────────
-const b1 = await ensurePeriodo(db, { anio: 2026, bimestre: 1, tipo: 'ORDINARIO', nombre: '2026 · Bimestre 1', fecha_inicio: '2026-03-01', fecha_fin: '2026-05-15' })
-const b2 = await ensurePeriodo(db, { anio: 2026, bimestre: 2, tipo: 'ORDINARIO', nombre: '2026 · Bimestre 2', fecha_inicio: '2026-05-16', fecha_fin: '2026-07-31' })
+// Los cuatro bimestres del año escolar. Sus fechas de cierre son el eje temporal
+// de las series de notas (ver scripts/generar-notas-diagnosticas.mjs).
+const BIMESTRES = [
+  { bimestre: 1, nombre: '2026 · Bimestre 1', fecha_inicio: '2026-03-01', fecha_fin: '2026-05-15' },
+  { bimestre: 2, nombre: '2026 · Bimestre 2', fecha_inicio: '2026-05-16', fecha_fin: '2026-07-31' },
+  { bimestre: 3, nombre: '2026 · Bimestre 3', fecha_inicio: '2026-08-10', fecha_fin: '2026-10-09' },
+  { bimestre: 4, nombre: '2026 · Bimestre 4', fecha_inicio: '2026-10-12', fecha_fin: '2026-12-18' },
+]
+for (const b of BIMESTRES) await ensurePeriodo(db, { anio: 2026, tipo: 'ORDINARIO', ...b })
 
 // ── Especialista UGEL ────────────────────────────────────────────────────────
 const ugelId = await ensureAuthUser('ugel@kipu.demo', PASS)
 await db.from('usuarios').insert({ id: ugelId, rol_id: roles.ugel, colegio_id: null, nombre_completo: 'Especialista UGEL 06', es_sintetico: true })
 
-// ── 1 director por colegio ───────────────────────────────────────────────────
+// ── 1 director (único) en el colegio del docente demo ────────────────────────
+// Un solo login por rol: la demo se recorre con ugel@ / director@ / profesor@.
+// El director se liga al colegio del docente de menor dni —el mismo que
+// `db:demo-users` promueve a profesor@— para que ambos paneles muestren la
+// misma institución y ninguno salga vacío.
 const { data: colegios } = await db.from('colegios').select('id, codigo, nombre').order('codigo')
-let nDir = 0
-for (const c of colegios ?? []) {
-  const id = await ensureAuthUser(`director.${c.codigo}@kipu.demo`, PASS)
-  const { error } = await db.from('usuarios').insert({ id, rol_id: roles.director, colegio_id: c.id, nombre_completo: `Director ${c.nombre}`, es_sintetico: true })
-  if (!error) nDir++
+const { data: dpDemo } = await db.from('datos_personales').select('usuario_id').order('dni').limit(1)
+const { data: profDemo } = dpDemo?.length
+  ? await db.from('usuarios').select('colegio_id').eq('id', dpDemo[0].usuario_id).single()
+  : { data: null }
+const colegioDemo = profDemo?.colegio_id ?? colegios?.[0]?.id ?? null
+const nombreColegioDemo = colegios?.find((c) => c.id === colegioDemo)?.nombre ?? '—'
+const directorId = await ensureAuthUser('director@kipu.demo', PASS)
+{
+  const { error } = await db.from('usuarios').insert({ id: directorId, rol_id: roles.director, colegio_id: colegioDemo, nombre_completo: 'Director(a)', es_sintetico: true })
+  if (error) throw new Error(`director@kipu.demo: ${error.message}`)
 }
 
 // ── Contenido operativo de muestra sobre los primeros dictados ───────────────
@@ -88,7 +111,11 @@ const DESEMP_CONTENT = {
   5: { ev: 'Se anticipan estrategias de regulación del comportamiento.', rec: '' },
 }
 
-function mkEval(aprobada) {
+// `variacion` degrada esa cantidad de ítems aplicables (LOGRADO→PROCESO→INICIO)
+// de forma determinista, para que no todas las fichas den el mismo puntaje: el
+// evaluador real nunca produce dos idénticas. La ficha queda coherente porque
+// puntaje, promedio, nivel y decisión se recalculan a partir de los ítems.
+function mkEval(aprobada, variacion = 0) {
   const items = ITEMS.map(([dimension, nombre], i) => {
     const numero = i + 1
     if (EXCLUDED.has(numero)) return { numero, dimension, nombre, valoracion: 'NO_APLICA', puntaje: null, evidencia: 'Ítem excluido de la evaluación', recomendacion: '', excluido: true }
@@ -97,6 +124,14 @@ function mkEval(aprobada) {
     const valoracion = variant ? variant.v : (aprobada ? 'LOGRADO' : 'PROCESO')
     return { numero, dimension, nombre, valoracion, puntaje: PUNTAJE[valoracion], evidencia: variant ? variant.ev : c.ev, recomendacion: variant ? variant.rec : c.rec, excluido: false }
   })
+  if (variacion > 0) {
+    const idx = items.map((it, i) => (it.puntaje !== null ? i : -1)).filter((i) => i >= 0)
+    for (let k = 0; k < variacion && k < idx.length; k++) {
+      const it = items[idx[(k * 5 + variacion * 3) % idx.length]]
+      if (it.valoracion === 'LOGRADO') { it.valoracion = 'PROCESO'; it.puntaje = PUNTAJE.PROCESO }
+      else if (it.valoracion === 'PROCESO') { it.valoracion = 'INICIO'; it.puntaje = PUNTAJE.INICIO }
+    }
+  }
   const aplicables = items.filter((it) => it.puntaje !== null)
   const puntaje_total = aplicables.reduce((s, it) => s + it.puntaje, 0)
   const puntaje_max = aplicables.length * 3
@@ -139,23 +174,84 @@ function mkEval(aprobada) {
   }
 }
 
-const { data: dictados } = await db.from('dictados').select('id, profesor_id').order('created_at').limit(6)
+// Elegir los dictados a los que se les crea contenido: primero los del docente
+// demo (para que su panel tenga entregas) y luego uno por colegio distinto, de
+// modo que el gráfico "score por institución" del panel UGEL tenga varias barras
+// y no una sola.
+const { data: todosDictados } = await db.from('dictados').select('id, profesor_id, aulas(colegio_id)').order('created_at')
+const dictados = []
+const colegiosUsados = new Set()
+for (const d of (todosDictados ?? []).filter((d) => d.profesor_id === dpDemo?.[0]?.usuario_id)) {
+  dictados.push(d); colegiosUsados.add(d.aulas?.colegio_id)
+}
+for (const d of todosDictados ?? []) {
+  if (dictados.length >= 12) break
+  const col = d.aulas?.colegio_id
+  if (colegiosUsados.has(col)) continue
+  dictados.push(d); colegiosUsados.add(col)
+}
+// Una unidad por bimestre en cada dictado, con sus sesiones y su evidencia
+// evaluada. Da volumen suficiente para que las fichas de docente y el panel UGEL
+// muestren historial en vez de un caso suelto.
+const TEMAS = [
+  { titulo: 'Números y operaciones', temas: ['fracciones', 'decimales'], sesiones: ['Comparamos fracciones', 'Resolvemos problemas con fracciones', 'Aplicamos lo aprendido'] },
+  { titulo: 'Patrones y equivalencias', temas: ['patrones', 'ecuaciones'], sesiones: ['Descubrimos patrones', 'Representamos equivalencias'] },
+  { titulo: 'Formas y movimiento', temas: ['geometría', 'localización'], sesiones: ['Reconocemos figuras', 'Nos ubicamos en el plano', 'Construimos cuerpos geométricos'] },
+  { titulo: 'Gestión de datos', temas: ['tablas', 'gráficos', 'probabilidad'], sesiones: ['Organizamos datos en tablas', 'Interpretamos gráficos'] },
+]
 let nUnidades = 0
+let nSesiones = 0
+let nEvidenciasSesion = 0
 for (const [i, d] of (dictados ?? []).entries()) {
-  const aprobada = i % 3 === 0
-  const evalData = mkEval(aprobada)
-  const decision = evalData.decision
-  const { data: [u] } = await db.from('unidades').insert({ dictado_id: d.id, nombre: `Unidad ${i + 1}`, orden: 1, es_sintetico: true }).select()
-  await db.from('contextos_ia').insert({ unidad_id: u.id, contexto: { area: 'Matemática', titulo: `Unidad ${i + 1}`, temas: ['fracciones'], periodo: 'diagnóstico' } })
-  await db.from('sesiones').insert({ unidad_id: u.id, nombre: 'Sesión 1', fecha: '2026-04-01', orden: 1, es_sintetico: true })
-  const { data: [ev] } = await db.from('evidencias').insert({ unidad_id: u.id, profesor_id: d.profesor_id, estado: decision, version_actual: 1, es_sintetico: true }).select()
-  const { data: [v] } = await db.from('evidencia_versiones').insert({ evidencia_id: ev.id, version: 1, nombre_archivo: `unidad-${i + 1}.pdf`, storage_path: 'seed/none', sha256: 'seed', estado: decision, es_valida: aprobada }).select()
-  await db.from('evaluaciones').insert({ version_id: v.id, ...evalData })
-  nUnidades++
+  for (const [b, bim] of BIMESTRES.entries()) {
+    const tema = TEMAS[b]
+    // Alterna aprobadas y observadas de forma estable (sin aleatoriedad: el seed
+    // debe dar el mismo resultado en cada corrida).
+    const aprobada = (i + b) % 3 !== 1
+    const evalData = mkEval(aprobada, (i * 3 + b * 2) % 6)
+    const decision = evalData.decision
+    const orden = b + 1
+    const { data: [u] } = await db.from('unidades')
+      .insert({ dictado_id: d.id, nombre: `Unidad ${orden} · ${tema.titulo}`, orden, es_sintetico: true }).select()
+    await db.from('contextos_ia').insert({
+      unidad_id: u.id,
+      contexto: { area: 'Matemática', titulo: tema.titulo, temas: tema.temas, periodo: bim.nombre },
+    })
+    const { data: sesionesCreadas } = await db.from('sesiones').insert(tema.sesiones.map((nombre, k) => ({
+      unidad_id: u.id, nombre, fecha: bim.fecha_fin, orden: k + 1, es_sintetico: true,
+    }))).select()
+    nSesiones += tema.sesiones.length
+
+    // Evidencia por sesión: la evidencia es polimórfica (unidad XOR sesión), y
+    // sin esto las sesiones existen pero no tienen documento ni evaluación que
+    // mostrar en el visor. Se deja una de cada tres sin entregar, que es lo que
+    // pasa en la realidad.
+    for (const [k, s] of (sesionesCreadas ?? []).entries()) {
+      if ((i + b + k) % 3 === 2) continue
+      const okSesion = (i + b + k) % 4 !== 1
+      const evalSesion = mkEval(okSesion, (i + b * 2 + k * 3) % 6)
+      const { data: [evS] } = await db.from('evidencias')
+        .insert({ sesion_id: s.id, profesor_id: d.profesor_id, estado: evalSesion.decision, version_actual: 1, es_sintetico: true }).select()
+      const { data: [vS] } = await db.from('evidencia_versiones').insert({
+        evidencia_id: evS.id, version: 1, nombre_archivo: `sesion-${orden}-${k + 1}.pdf`,
+        storage_path: 'seed/none', sha256: 'seed', estado: evalSesion.decision, es_valida: okSesion,
+      }).select()
+      await db.from('evaluaciones').insert({ version_id: vS.id, ...evalSesion })
+      nEvidenciasSesion++
+    }
+    const { data: [ev] } = await db.from('evidencias')
+      .insert({ unidad_id: u.id, profesor_id: d.profesor_id, estado: decision, version_actual: 1, es_sintetico: true }).select()
+    const { data: [v] } = await db.from('evidencia_versiones').insert({
+      evidencia_id: ev.id, version: 1, nombre_archivo: `unidad-${orden}-${bim.bimestre}.pdf`,
+      storage_path: 'seed/none', sha256: 'seed', estado: decision, es_valida: aprobada,
+    }).select()
+    await db.from('evaluaciones').insert({ version_id: v.id, ...evalData })
+    nUnidades++
+  }
 }
 
-// ── Alertas de muestra ───────────────────────────────────────────────────────
-const colegioAlerta = colegios?.[0]?.id ?? null
+// ── Alertas de muestra (en el colegio del director, para que las vea) ────────
+const colegioAlerta = colegioDemo
 await db.from('alertas').insert([
   {
     tipo: 'REPEATED_INVALID_UNITS', severidad: 'HIGH', colegio_id: colegioAlerta,
@@ -177,4 +273,4 @@ await db.from('alertas').insert([
 await db.storage.createBucket('evidence', { public: false }).catch(() => {})
 
 console.log(`seed ok · password demo: ${PASS}`)
-console.log(`  ${nDir} directores · 1 ugel · 2 periodos · ${nUnidades} unidades demo · 2 alertas`)
+console.log(`  1 director (${nombreColegioDemo}) · 1 ugel · ${BIMESTRES.length} bimestres · ${nUnidades} unidades · ${nSesiones} sesiones (${nEvidenciasSesion} con evidencia) · 2 alertas`)

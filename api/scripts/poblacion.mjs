@@ -5,9 +5,16 @@
 // relacionando sus llaves contra las existentes. La data se marca es_sintetico.
 //
 // Fuentes:
-//   data/ugel06_60_rubricas_diagnosticas.json               → estructura + secciones
-//   data/ugel06_1500_evaluaciones.json                      → 1500 notas diagnósticas
+//   data/ugel06_notas_diagnosticas_primaria.json            → aulas, alumnos y notas
 //   data/ugel06_profesores_contexto_sociodemografico_30.json → contexto del colegio
+//
+// El dataset de notas replica la plantilla real de la evaluación diagnóstica de
+// primaria (docs/privado/EV. DIAGNÓSTICA PRIMARIA.xlsx) y lo genera
+// `scripts/generar-notas-diagnosticas.mjs`. Su unidad es el **aula** (grado +
+// sección + turno, con una sola nómina de alumnos) evaluada en las dos áreas:
+// cada acta (aula × área) es un `dictado` con su docente, y de cada alumno
+// cuelgan las notas por competencia (matemática C1-C4, comunicación C1-C3) más
+// la nota GENERAL.
 //
 // Orden: ugel → canal → colegio → curso → profesor(usuario) → aula → dictado →
 //        alumno → matrícula → nota. Uso: npm run db:poblacion
@@ -20,19 +27,17 @@ import { ensureFuente, crearAdapter, ensureRoles, ensureEscala, ensurePeriodo } 
 const here = dirname(fileURLToPath(import.meta.url))
 const load = (f) => JSON.parse(readFileSync(join(here, 'data', f), 'utf8'))
 
-const rubricasDoc = load('ugel06_60_rubricas_diagnosticas.json')
-const evalDoc = load('ugel06_1500_evaluaciones.json')
+const notasDoc = load('ugel06_notas_diagnosticas_primaria.json')
 const contextoDoc = load('ugel06_profesores_contexto_sociodemografico_30.json')
-const rubrics = Object.values(rubricasDoc.rubrics)
-const evaluaciones = evalDoc.evaluations
-const contextoPairs = contextoDoc.professor_context_pairs
+const aulasDoc = notasDoc.aulas
+const actas = notasDoc.actas
 
 const SCORE = { C: 1, B: 2, A: 3, AD: 4 }
-const ugelKey = rubricasDoc.ugel_key || 'ugel_06'
+const ugelKey = notasDoc.ugel_key || 'ugel_06'
 
 // Contexto sociodemográfico por colegio (codigo_local, address, niveles).
 const ctxBySchool = new Map()
-for (const { sociodemographic_context: ctx } of contextoPairs) ctxBySchool.set(ctx.school_key, ctx)
+for (const { sociodemographic_context: ctx } of contextoDoc.professor_context_pairs) ctxBySchool.set(ctx.school_key, ctx)
 
 // ── Coordenadas por distrito (centroide + jitter determinista) ───────────────
 const DISTRICT_CENTROID = {
@@ -48,41 +53,46 @@ function coordsFor(district, i, n) {
   return [c[0] + radius * Math.sin(angle), c[1] + radius * Math.cos(angle)]
 }
 
-// ── Deduplicar entidades desde las rúbricas ─────────────────────────────────
+// ── Deduplicar entidades desde las aulas y las actas ────────────────────────
 const cursos = new Map(), canales = new Map(), colegios = new Map(), profes = new Map()
-const aulas = []                       // una por rúbrica/sección
-const sectionToSchool = new Map(), sectionToCourse = new Map()
 
-for (const r of rubrics) {
-  cursos.set(r.course_key, { codigo: r.course_key, nombre: r.course_name })
-  if (!canales.has(r.network_key)) {
-    canales.set(r.network_key, {
-      codigo: r.network_key,
-      numero: Number((r.network_name.match(/\d+/) || [])[0]) || null,
-      nombre: r.network_name,
-      distrito: r.district,
+for (const [key, area] of Object.entries(notasDoc.areas)) {
+  cursos.set(area.course_key, { codigo: area.course_key, nombre: area.course_name || key })
+}
+
+for (const a of aulasDoc) {
+  if (!canales.has(a.network_key)) {
+    canales.set(a.network_key, {
+      codigo: a.network_key,
+      numero: Number((a.network_name.match(/\d+/) || [])[0]) || null,
+      nombre: a.network_name,
+      distrito: a.district,
     })
   }
-  if (!colegios.has(r.school_key)) {
-    const ctx = ctxBySchool.get(r.school_key) || {}
-    colegios.set(r.school_key, {
-      codigo: r.school_key,
-      network_key: r.network_key,
+  if (!colegios.has(a.school_key)) {
+    const ctx = ctxBySchool.get(a.school_key) || {}
+    colegios.set(a.school_key, {
+      codigo: a.school_key,
+      network_key: a.network_key,
       codigo_local: ctx.codigo_local ?? null,
-      nombre: r.school_name,
+      nombre: a.school_name,
       direccion: ctx.address ?? null,
       niveles_educativos: ctx.educational_levels ?? null,
-      perfil_desempeno: r.school_performance_profile ?? null,
-      perfil_desempeno_label: r.school_performance_profile_label ?? null,
-      _district: r.district,
+      perfil_desempeno: a.school_performance_profile ?? null,
+      perfil_desempeno_label: a.school_performance_profile_label ?? null,
+      _district: a.district,
     })
   }
-  if (!profes.has(r.professor_dni)) {
-    profes.set(r.professor_dni, { dni: r.professor_dni, nombre: r.professor_name, school_key: r.school_key, course_key: r.course_key })
+}
+
+// Un profesor por (dni): dicta su área en las aulas de su colegio.
+for (const acta of actas) {
+  if (!profes.has(acta.professor_dni)) {
+    profes.set(acta.professor_dni, {
+      dni: acta.professor_dni, nombre: acta.professor_name,
+      school_key: acta.school_key, course_key: acta.course_key,
+    })
   }
-  aulas.push({ section_key: r.rubric_key, school_key: r.school_key, course_key: r.course_key, professor_dni: r.professor_dni, seccion: r.section })
-  sectionToSchool.set(r.rubric_key, r.school_key)
-  sectionToCourse.set(r.rubric_key, r.course_key)
 }
 
 // Coordenadas de colegios por distrito.
@@ -94,29 +104,71 @@ for (const [district, list] of byDistrict) {
 
 // ── Catálogos + fuente + adapter ─────────────────────────────────────────────
 const roles = await ensureRoles(db)
-const escala = await ensureEscala(db, rubricasDoc.grading_scale, SCORE)
-const periodoDiag = await ensurePeriodo(db, { anio: 2026, bimestre: null, tipo: 'DIAGNOSTICO', nombre: 'Evaluación Diagnóstica 2026' })
+const escala = await ensureEscala(db, notasDoc.grading_scale, SCORE)
+// Periodos de la línea de tiempo del dataset: diagnóstico + bimestres de
+// seguimiento. Las notas de cada periodo cuelgan del MISMO dictado (la
+// asignación docente del año), y se distinguen por `periodo_id` y
+// `tipo_evaluacion`; el dictado se ancla al periodo diagnóstico, que es el que
+// usan las vistas agregadas del panel UGEL.
+const periodoId = new Map()
+for (const p of notasDoc.periodos ?? []) {
+  const id = await ensurePeriodo(db, {
+    anio: p.anio, bimestre: p.bimestre, tipo: p.tipo, nombre: p.nombre,
+    fecha_inicio: p.fecha ?? null, fecha_fin: p.fecha ?? null,
+  })
+  // `fecha_fin` = fecha de cierre de la evaluación: es el eje temporal de la
+  // serie "notas vs tiempo". Se fija aunque el periodo ya existiera (lo crea el
+  // seed sin fecha para el diagnóstico).
+  if (p.fecha) {
+    const { data: row } = await db.from('periodos_academicos').select('fecha_inicio').eq('id', id).single()
+    await db.from('periodos_academicos')
+      .update({ fecha_fin: p.fecha, fecha_inicio: row?.fecha_inicio ?? p.fecha })
+      .eq('id', id)
+  }
+  periodoId.set(p.key, id)
+}
+const periodoDiag = periodoId.get('diagnostico')
+  ?? await ensurePeriodo(db, { anio: 2026, bimestre: null, tipo: 'DIAGNOSTICO', nombre: 'Evaluación Diagnóstica 2026' })
 const fuenteId = await ensureFuente(db, { codigo: 'ugel06_synthetic_v1', nombre: 'UGEL 06 sintético v1', formato: 'json_ugel06', es_sintetica: true })
 const ad = crearAdapter(db, fuenteId)
 
-// ── Limpieza idempotente (solo lo mapeado por esta fuente) ───────────────────
+// ── Limpieza idempotente (solo la capa académica de esta fuente) ─────────────
+// Se re-siembra lo que el dataset regenera —aulas, dictados, alumnos,
+// matrículas y notas— y se CONSERVA la capa institucional (ugel, canales,
+// colegios, cursos) y los docentes: de ellos cuelgan usuarios demo, evidencias y
+// otros datos ajenos a esta fuente. El adapter los reutiliza por su mapeo.
 console.log('Limpiando data previa de la fuente…')
-const { data: mapped } = await db.from('mapeo_llaves_externas').select('entidad,id_interno').eq('fuente_id', fuenteId)
-const idsDe = (ent) => (mapped || []).filter((m) => m.entidad === ent).map((m) => m.id_interno)
-const delIn = async (table, ids) => { if (ids.length) { const { error } = await db.from(table).delete().in('id', ids); if (error) throw new Error(`wipe ${table}: ${error.message}`) } }
+const ENTIDADES_VOLATILES = ['dictado', 'aula', 'alumno']
+// PostgREST devuelve como máximo 1000 filas por consulta: hay que paginar o la
+// limpieza deja huérfanos (los mapeos de esta fuente pasan de mil con los alumnos).
+const mapped = []
+for (let desde = 0; ; desde += 1000) {
+  const { data, error } = await db.from('mapeo_llaves_externas')
+    .select('entidad,id_interno').eq('fuente_id', fuenteId).range(desde, desde + 999)
+  if (error) throw new Error(`mapeo_llaves_externas: ${error.message}`)
+  mapped.push(...data)
+  if (data.length < 1000) break
+}
+const idsDe = (ent) => mapped.filter((m) => m.entidad === ent).map((m) => m.id_interno)
+const delIn = async (table, ids) => {
+  for (let i = 0; i < ids.length; i += 500) {
+    const { error } = await db.from(table).delete().in('id', ids.slice(i, i + 500))
+    if (error) throw new Error(`wipe ${table}: ${error.message}`)
+  }
+}
 if (mapped?.length) {
   // hijos → padres
   const alumnoIds = idsDe('alumno')
-  if (alumnoIds.length) { for (const t of ['notas', 'matriculas']) { const { error } = await db.from(t).delete().in('alumno_id', alumnoIds); if (error) throw new Error(`wipe ${t}: ${error.message}`) } }
+  for (const t of ['notas', 'matriculas']) {
+    for (let i = 0; i < alumnoIds.length; i += 500) {
+      const { error } = await db.from(t).delete().in('alumno_id', alumnoIds.slice(i, i + 500))
+      if (error) throw new Error(`wipe ${t}: ${error.message}`)
+    }
+  }
   await delIn('dictados', idsDe('dictado'))
   await delIn('aulas', idsDe('aula'))
   await delIn('alumnos', alumnoIds)
-  await delIn('usuarios', idsDe('profesor'))     // datos_personales cae por cascade
-  await delIn('colegios', idsDe('colegio'))
-  await delIn('canales', idsDe('canal'))
-  await delIn('cursos', idsDe('curso'))
-  await delIn('ugels', idsDe('ugel'))
-  await db.from('mapeo_llaves_externas').delete().eq('fuente_id', fuenteId)
+  await db.from('mapeo_llaves_externas').delete().eq('fuente_id', fuenteId).in('entidad', ENTIDADES_VOLATILES)
 }
 
 // ── Ingesta en orden de FK ───────────────────────────────────────────────────
@@ -139,6 +191,15 @@ for (const c of colegios.values()) colegioId.set(c.codigo, await ad.resolverOCre
 const profesorId = new Map()
 for (const p of profes.values()) {
   let id = await ad.resolver('profesor', p.dni)
+  if (id) {
+    // Mapeo huérfano (el usuario fue borrado por otro script): se descarta y recrea.
+    const { data: row } = await db.from('usuarios').select('id').eq('id', id).maybeSingle()
+    if (!row) {
+      await db.from('mapeo_llaves_externas').delete()
+        .eq('fuente_id', fuenteId).eq('entidad', 'profesor').eq('llave_externa', p.dni)
+      id = null
+    }
+  }
   if (!id) {
     id = await ensureAuthUser(`profe.${p.dni}@kipu.demo`)
     const { error } = await db.from('usuarios').insert({ id, rol_id: roles.profesor, colegio_id: colegioId.get(p.school_key), nombre_completo: p.nombre, es_sintetico: true })
@@ -149,21 +210,25 @@ for (const p of profes.values()) {
   profesorId.set(p.dni, id)
 }
 
+// Aulas: grado + sección + turno + nivel (cabecera del acta diagnóstica).
 const aulaId = new Map()
-for (const a of aulas) aulaId.set(a.section_key, await ad.resolverOCrear('aula', a.section_key, 'aulas', () => ({
-  colegio_id: colegioId.get(a.school_key), codigo: a.section_key, grado: null, seccion: a.seccion, nombre: `Sección ${a.seccion}`, es_sintetico: true,
+for (const a of aulasDoc) aulaId.set(a.section_key, await ad.resolverOCrear('aula', a.section_key, 'aulas', () => ({
+  colegio_id: colegioId.get(a.school_key), codigo: a.section_key, grado: a.grado, seccion: a.seccion,
+  turno: a.turno, nivel: a.nivel_educativo, nombre: a.nombre, es_sintetico: true,
 })))
 
+// Dictados: uno por acta (aula × área) con el docente de esa área.
 const dictadoId = new Map()
-for (const a of aulas) dictadoId.set(a.section_key, await ad.resolverOCrear('dictado', a.section_key, 'dictados', () => ({
-  aula_id: aulaId.get(a.section_key), curso_id: cursoId.get(a.course_key), profesor_id: profesorId.get(a.professor_dni), periodo_id: periodoDiag, es_sintetico: true,
+for (const acta of actas) dictadoId.set(acta.acta_key, await ad.resolverOCrear('dictado', acta.acta_key, 'dictados', () => ({
+  aula_id: aulaId.get(acta.section_key), curso_id: cursoId.get(acta.course_key),
+  profesor_id: profesorId.get(acta.professor_dni), periodo_id: periodoDiag, es_sintetico: true,
 })))
 
-// Alumnos (lote) → Map student_key → uuid. Colegio del alumno = colegio de su sección.
-const alumnoId = await ad.crearLote('alumno', 'alumnos', evaluaciones.map((e) => ({
-  llave: e.student_key,
-  fila: { colegio_id: colegioId.get(sectionToSchool.get(e.section_key)), codigo: e.student_key, numero: e.student_number, nombre_completo: e.student_name, es_sintetico: true },
-})))
+// Alumnos (lote) → Map student_key → uuid. El alumno pertenece al colegio de su aula.
+const alumnoId = await ad.crearLote('alumno', 'alumnos', aulasDoc.flatMap((a) => a.students.map((s) => ({
+  llave: s.student_key,
+  fila: { colegio_id: colegioId.get(a.school_key), codigo: s.student_key, numero: s.student_number, nombre_completo: s.full_name, es_sintetico: true },
+}))))
 
 // Inserción en lote sin mapeo (matriculas, notas).
 async function insertLote(table, rows) {
@@ -173,22 +238,38 @@ async function insertLote(table, rows) {
   }
 }
 
-// Matrículas: alumno ⋈ aula(sección) en el periodo diagnóstico.
-await insertLote('matriculas', evaluaciones.map((e) => ({
-  alumno_id: alumnoId.get(e.student_key), aula_id: aulaId.get(e.section_key), periodo_id: periodoDiag, es_sintetico: true,
-})))
+// Matrículas: alumno ⋈ aula en el periodo diagnóstico (una por alumno).
+await insertLote('matriculas', aulasDoc.flatMap((a) => a.students.map((s) => ({
+  alumno_id: alumnoId.get(s.student_key), aula_id: aulaId.get(a.section_key), periodo_id: periodoDiag, es_sintetico: true,
+}))))
 
-// Notas: 4 competencias (C1-C4) + 1 GENERAL por alumno.
+// Notas: por acta, las competencias del área (mate C1-C4, comu C1-C3) + GENERAL.
+// Se emiten para el diagnóstico y para cada periodo de seguimiento bimestral.
+const competenciasDe = new Map(actas.map((a) => [a.acta_key, a.competencias.map((c) => c.codigo)]))
+const cursoDe = new Map(actas.map((a) => [a.acta_key, a.course_key]))
 const notasRows = []
-for (const e of evaluaciones) {
-  const base = { alumno_id: alumnoId.get(e.student_key), curso_id: cursoId.get(sectionToCourse.get(e.section_key)), periodo_id: periodoDiag, dictado_id: dictadoId.get(e.section_key), tipo_evaluacion: 'DIAGNOSTICO', es_sintetico: true }
-  for (const comp of ['C1', 'C2', 'C3', 'C4']) {
-    notasRows.push({ ...base, competencia: comp, escala_id: escala[e[comp]], puntaje_numerico: SCORE[e[comp]] })
+function emitirNotas(actaKey, filas, periodo, tipoEvaluacion) {
+  const base = {
+    curso_id: cursoId.get(cursoDe.get(actaKey)), periodo_id: periodo,
+    dictado_id: dictadoId.get(actaKey), tipo_evaluacion: tipoEvaluacion, es_sintetico: true,
   }
-  notasRows.push({ ...base, competencia: 'GENERAL', escala_id: escala[e.overall_grade], puntaje_numerico: e.average_score_1_to_4, descripcion: e.overall_level })
+  for (const e of filas) {
+    const fila = { ...base, alumno_id: alumnoId.get(e.student_key) }
+    for (const comp of competenciasDe.get(actaKey)) {
+      notasRows.push({ ...fila, competencia: comp, escala_id: escala[e[comp]], puntaje_numerico: SCORE[e[comp]] })
+    }
+    notasRows.push({ ...fila, competencia: 'GENERAL', escala_id: escala[e.overall_grade], puntaje_numerico: e.average_score_1_to_4, descripcion: e.overall_level })
+  }
+}
+for (const acta of actas) emitirNotas(acta.acta_key, acta.students, periodoDiag, 'DIAGNOSTICO')
+for (const s of notasDoc.seguimiento ?? []) {
+  const periodo = periodoId.get(s.periodo)
+  if (!periodo) throw new Error(`periodo no resuelto: ${s.periodo}`)
+  emitirNotas(s.acta_key, s.students, periodo, s.tipo_evaluacion)
 }
 await insertLote('notas', notasRows)
 
 console.log(`\n✔ Migración ugel_06 completa:`,
-  `${canales.size} canales · ${colegios.size} colegios · ${profes.size} profesores · ${aulas.length} aulas/dictados · ${alumnoId.size} alumnos · ${notasRows.length} notas`)
+  `${canales.size} canales · ${colegios.size} colegios · ${profes.size} profesores · ${aulasDoc.length} aulas ·`,
+  `${actas.length} dictados (actas) · ${alumnoId.size} alumnos · ${notasRows.length} notas`)
 console.log('  (marcado es_sintetico=true; fuente ugel06_synthetic_v1)')

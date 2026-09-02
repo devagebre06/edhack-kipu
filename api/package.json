@@ -10,6 +10,7 @@
     "db:add-user": "node --env-file=.env scripts/add-user.mjs",
     "db:demo-users": "node --env-file=.env scripts/demo-users.mjs",
     "db:poblacion": "node --env-file=.env scripts/poblacion.mjs",
+    "db:generar-notas": "node scripts/generar-notas-diagnosticas.mjs",
     "db:colegios": "node --env-file=.env scripts/colegios-reales.mjs",
     "db:migrate": "node --env-file=.env scripts/apply-migration.mjs"
   },

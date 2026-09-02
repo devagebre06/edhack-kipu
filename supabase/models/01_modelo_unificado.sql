@@ -31,7 +31,9 @@
 -- periodos_academicos(id pk, anio, bimestre, tipo=ORDINARIO|DIAGNOSTICO, nombre,
 --          fecha_inicio, fecha_fin; unique(anio,bimestre,tipo))
 -- cursos(id pk, codigo u=course_key, nombre, es_sintetico)   -- catálogo global
--- aulas(id pk, colegio_id→colegios, codigo u=section_key, grado, seccion, nombre, es_sintetico)
+-- aulas(id pk, colegio_id→colegios, codigo u=section_key, grado [1°..6°], seccion [A..F],
+--          turno [Mañana|Tarde], nivel [Inicial|Primaria|Secundaria], nombre, es_sintetico)
+--          -- cabecera del acta diagnóstica MINEDU (migración 010)
 -- alumnos(id pk, colegio_id→colegios, codigo u=student_key, numero, nombre_completo, es_sintetico)
 -- matriculas(id pk, alumno_id→alumnos, aula_id→aulas, periodo_id→periodos;
 --          unique(alumno_id,aula_id,periodo_id), es_sintetico)  -- time-scoped
@@ -81,6 +83,8 @@
 -- vw_alumnos_por_profesor     — matriculas ⋈ dictados (alumno↔profesor)
 -- vw_mapa_colegio_curso       — buckets de logro por colegio×curso (+lat/long)
 -- vw_profesor_resumen         — logro agregado por profesor + contexto colegio
+-- vw_aula_resumen             — logro por aula×curso (grado/sección/turno + C/B/A-AD)
+--                               [migración 011; alimenta "grupos preocupantes" del panel UGEL]
 
 -- ── Enums / RLS / triggers ───────────────────────────────────────────────────
 -- Enums: ver 00_enums.sql. RLS habilitado en todas; helpers mi_rol()/mi_colegio().

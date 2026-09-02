@@ -5,3 +5,7 @@ dist/
 .claude
 .DS_Store
 .playwright-mcp/
+
+# Fuentes con datos personales (nóminas reales de estudiantes, actas del MINEDU).
+# Se usan como referencia local para generar data sintética; nunca se versionan.
+docs/privado/

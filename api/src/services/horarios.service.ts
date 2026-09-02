@@ -28,7 +28,7 @@ export async function getHorariosPanel(colegioId: string) {
   const [{ data: teachers }, { data: cursos }, { data: aulas }, { data: periodos }] = await Promise.all([
     db.from('usuarios').select('id, nombre_completo, datos_personales(dni)').eq('colegio_id', colegioId).eq('rol_id', await rolProfesor()).order('nombre_completo'),
     db.from('cursos').select('id, nombre').order('nombre'),
-    db.from('aulas').select('id, seccion, grado, nombre').eq('colegio_id', colegioId).order('codigo'),
+    db.from('aulas').select('id, seccion, grado, turno, nombre').eq('colegio_id', colegioId).order('codigo'),
     db.from('periodos_academicos').select('id, nombre').order('anio'),
   ])
 

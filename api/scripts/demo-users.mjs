@@ -1,17 +1,21 @@
-// Cuentas demo con logins simples sobre el modelo unificado (migración 008).
+// Deja la demo con UN SOLO LOGIN POR ROL y purga las cuentas sobrantes.
 // Idempotente. Uso: node --env-file=.env scripts/demo-users.mjs  (o npm run db:demo-users)
 //
-// Qué hace:
-//   1. Elimina las cuentas javier.*@kipu.demo (auth + usuarios cae por cascade).
-//   2. Garantiza tres logins fáciles con la misma contraseña demo:
-//        · ugel@kipu.demo      → rol ugel (ve todo, sin colegio)
-//        · director@kipu.demo  → rol director, ligado a un colegio CON datos
-//        · profesor@kipu.demo  → un profesor real (con dictados/notas) renombrado,
-//                                 para que su panel no salga vacío
-//   No toca a los 30 profesores restantes (son carga estructural de dictados/notas).
+// Estado final garantizado:
+//   · ugel@kipu.demo      → rol ugel (ve todo, sin colegio)
+//   · director@kipu.demo  → rol director, ligado al colegio del docente demo
+//   · profesor@kipu.demo  → el docente de menor dni, con sus dictados y notas
+//
+// Purga: cualquier otra cuenta de rol ugel o director se borra de Auth (la fila
+// de `usuarios` cae por cascade) y sus referencias en logs_auditoria se anulan.
+//
+// Los 30 docentes `profe.<dni>@kipu.demo` NO se tocan: sostienen los 60 dictados
+// y las tarjetas de docentes del panel UGEL. El login de la demo es profesor@;
+// los demás existen como carga estructural de datos, no como cuentas de trabajo.
 import { db, DEMO_PASS as PASS } from './lib/client.mjs'
 
 const DOMAIN = '@kipu.demo'
+const CUENTAS = { ugel: 'ugel' + DOMAIN, director: 'director' + DOMAIN, profesor: 'profesor' + DOMAIN }
 const authUsers = async () => (await db.auth.admin.listUsers({ perPage: 1000 })).data.users
 const byEmail = (users, email) => users.find((u) => u.email === email)
 
@@ -19,17 +23,16 @@ const byEmail = (users, email) => users.find((u) => u.email === email)
 const { data: rolesRows, error: rErr } = await db.from('roles').select('id,key')
 if (rErr) throw new Error(`roles: ${rErr.message}`)
 const roles = Object.fromEntries(rolesRows.map((r) => [r.key, r.id]))
+const rolKey = Object.fromEntries(rolesRows.map((r) => [r.id, r.key]))
 for (const k of ['ugel', 'director', 'profesor']) if (!roles[k]) throw new Error(`falta el rol '${k}' (¿corriste las migraciones?)`)
 
-// ── 1) borrar javier.* ───────────────────────────────────────────────────────
-let users = await authUsers()
-const javier = users.filter((u) => u.email?.startsWith('javier.') && u.email.endsWith(DOMAIN))
-for (const u of javier) {
-  const { error } = await db.auth.admin.deleteUser(u.id)
-  if (error) throw new Error(`borrar ${u.email}: ${error.message}`)
-  console.log('🗑️  borrado', u.email)
+// borra una cuenta de Auth y limpia las referencias que no tienen FK
+async function borrarCuenta(id, etiqueta) {
+  await db.from('logs_auditoria').update({ actor_id: null }).eq('actor_id', id)
+  const { error } = await db.auth.admin.deleteUser(id)
+  if (error) throw new Error(`borrar ${etiqueta}: ${error.message}`)
+  console.log('🗑️  borrado', etiqueta)
 }
-if (!javier.length) console.log('· sin cuentas javier.* que borrar')
 
 // crea o actualiza un auth user con la contraseña demo; devuelve su id
 async function ensureAuth(email) {
@@ -43,50 +46,69 @@ async function ensureAuth(email) {
   return data.user.id
 }
 
-// ── 2) ugel@ ─────────────────────────────────────────────────────────────────
-const ugelId = await ensureAuth('ugel' + DOMAIN)
-await db.from('usuarios').upsert({ id: ugelId, rol_id: roles.ugel, colegio_id: null, nombre_completo: 'Especialista UGEL', es_sintetico: true })
-console.log('✅ ugel' + DOMAIN)
-
-// ── 3) elegir un colegio CON datos (un dictado; preferir uno con evidencias) ──
-const { data: evid } = await db.from('evidencias').select('profesor_id').limit(1)
-let profesorId = evid?.[0]?.profesor_id ?? null
-if (!profesorId) {
-  const { data: d } = await db.from('dictados').select('profesor_id').limit(1)
-  profesorId = d?.[0]?.profesor_id ?? null
-}
-if (!profesorId) {
-  console.log('\n⚠️  No hay dictados/evidencias en la DB todavía.')
+// ── 1) elegir el docente demo: el de menor dni, con dictados ─────────────────
+const { data: docentes } = await db
+  .from('datos_personales')
+  .select('usuario_id, dni, usuarios!inner(rol_id, colegio_id, nombre_completo)')
+  .order('dni')
+const docente = (docentes ?? []).find((d) => d.usuarios?.rol_id === roles.profesor)
+if (!docente) {
+  console.log('\n⚠️  No hay docentes en la DB todavía.')
   console.log('   Corre primero:  npm run db:poblacion  &&  npm run db:seed')
-  console.log('   Luego vuelve a correr este script para ligar director@ y profesor@.')
   console.log(`\n🔑 Contraseña demo: ${PASS}`)
   process.exit(0)
 }
+const colegioDemo = docente.usuarios.colegio_id
 
-// colegio del profesor elegido (dictado → aula → colegio)
-const { data: dRow } = await db.from('dictados').select('aulas(colegio_id)').eq('profesor_id', profesorId).limit(1).single()
-const colegioId = dRow?.aulas?.colegio_id
-if (!colegioId) throw new Error('no pude resolver el colegio del profesor elegido')
-
-// ── 4) profesor@ : renombrar el email del profesor elegido ───────────────────
-users = await authUsers()
-const yaProfesor = byEmail(users, 'profesor' + DOMAIN)
+// ── 2) profesor@ : renombrar el email del docente elegido ────────────────────
+// Si ya existe un profesor@ que NO es él (p. ej. quedó de una corrida anterior),
+// se borra solo cuando no ancla dictados; si los ancla, ese pasa a ser el docente.
+let profesorId = docente.usuario_id
+const yaProfesor = byEmail(await authUsers(), CUENTAS.profesor)
 if (yaProfesor && yaProfesor.id !== profesorId) {
-  // ya existe un profesor@ distinto: liberamos el email borrándolo (no ancla datos si no tiene dictado)
-  const { data: suyos } = await db.from('dictados').select('id', { count: 'exact', head: true }).eq('profesor_id', yaProfesor.id)
-  if (suyos) { /* tiene datos: lo dejamos y usamos ese en vez de renombrar */ profesorId = yaProfesor.id }
-  else { await db.auth.admin.deleteUser(yaProfesor.id) }
+  const { count } = await db.from('dictados').select('*', { count: 'exact', head: true }).eq('profesor_id', yaProfesor.id)
+  if (count) profesorId = yaProfesor.id
+  else await borrarCuenta(yaProfesor.id, `${CUENTAS.profesor} (huérfano)`)
 }
-if (!byEmail(await authUsers(), 'profesor' + DOMAIN)) {
-  const { error } = await db.auth.admin.updateUserById(profesorId, { email: 'profesor' + DOMAIN, password: PASS, email_confirm: true })
-  if (error) throw new Error(`renombrar a profesor${DOMAIN}: ${error.message}`)
+if (!byEmail(await authUsers(), CUENTAS.profesor)) {
+  const { error } = await db.auth.admin.updateUserById(profesorId, { email: CUENTAS.profesor, password: PASS, email_confirm: true })
+  if (error) throw new Error(`renombrar a ${CUENTAS.profesor}: ${error.message}`)
+} else {
+  await db.auth.admin.updateUserById(profesorId, { password: PASS, email_confirm: true })
 }
-console.log('✅ profesor' + DOMAIN, '· colegio con datos')
+const { data: profRow } = await db.from('usuarios').select('nombre_completo').eq('id', profesorId).single()
+console.log('✅', CUENTAS.profesor, `· ${profRow?.nombre_completo ?? '—'}`)
 
-// ── 5) director@ : rol director en ese mismo colegio ─────────────────────────
-const directorId = await ensureAuth('director' + DOMAIN)
-await db.from('usuarios').upsert({ id: directorId, rol_id: roles.director, colegio_id: colegioId, nombre_completo: 'Director(a)', es_sintetico: true })
-console.log('✅ director' + DOMAIN, '· mismo colegio que profesor@')
+// ── 3) ugel@ y director@ ─────────────────────────────────────────────────────
+const ugelId = await ensureAuth(CUENTAS.ugel)
+await db.from('usuarios').upsert({ id: ugelId, rol_id: roles.ugel, colegio_id: null, nombre_completo: 'Especialista UGEL 06', es_sintetico: true })
+console.log('✅', CUENTAS.ugel)
 
-console.log(`\n🔑 Contraseña (las tres): ${PASS}`)
-console.log('   ugel@kipu.demo · director@kipu.demo · profesor@kipu.demo')
+const directorId = await ensureAuth(CUENTAS.director)
+await db.from('usuarios').upsert({ id: directorId, rol_id: roles.director, colegio_id: colegioDemo, nombre_completo: 'Director(a)', es_sintetico: true })
+console.log('✅', CUENTAS.director, '· mismo colegio que profesor@')
+
+// ── 4) purga: un solo usuario por rol para ugel y director ───────────────────
+const conservar = new Set([ugelId, directorId, profesorId])
+const { data: todos } = await db.from('usuarios').select('id, rol_id, nombre_completo')
+const auth = await authUsers()
+let purgados = 0
+for (const u of todos ?? []) {
+  if (conservar.has(u.id)) continue
+  if (rolKey[u.rol_id] === 'profesor') continue        // los docentes sostienen dictados y notas
+  await borrarCuenta(u.id, `${auth.find((a) => a.id === u.id)?.email ?? u.id} (${rolKey[u.rol_id]})`)
+  purgados++
+}
+
+// Cuentas de Auth sin fila en `usuarios` (huérfanas de corridas anteriores).
+const { data: vigentes } = await db.from('usuarios').select('id')
+const idsVigentes = new Set((vigentes ?? []).map((u) => u.id))
+for (const a of await authUsers()) {
+  if (!idsVigentes.has(a.id)) { await borrarCuenta(a.id, `${a.email} (sin fila en usuarios)`); purgados++ }
+}
+
+const { count: nUsuarios } = await db.from('usuarios').select('*', { count: 'exact', head: true })
+const { count: nProfes } = await db.from('usuarios').select('*', { count: 'exact', head: true }).eq('rol_id', roles.profesor)
+console.log(`\n🧹 ${purgados} cuentas purgadas · quedan ${nUsuarios} usuarios: 1 ugel + 1 director + ${nProfes} docentes (uno de ellos es profesor@)`)
+console.log(`🔑 Contraseña (las tres): ${PASS}`)
+console.log(`   ${CUENTAS.ugel} · ${CUENTAS.director} · ${CUENTAS.profesor}`)

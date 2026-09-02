@@ -20,6 +20,13 @@ import DirectorContexts from '@/pages/director/DirectorContexts'
 import Ugel from '@/pages/ugel/Ugel'
 import MapaDiagnostico from '@/pages/ugel/MapaDiagnostico'
 import UgelUsuarios from '@/pages/ugel/UgelUsuarios'
+import UgelProfesores from '@/pages/ugel/UgelProfesores'
+import UgelProfesorDetalle from '@/pages/ugel/UgelProfesorDetalle'
+import UgelAlumnos from '@/pages/ugel/UgelAlumnos'
+import UgelAlumnoDetalle from '@/pages/ugel/UgelAlumnoDetalle'
+import UgelAlertas from '@/pages/ugel/UgelAlertas'
+import UgelEvidencias from '@/pages/ugel/UgelEvidencias'
+import Glosario from '@/pages/Glosario'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } })
 
@@ -65,7 +72,15 @@ function AppInner() {
               {/* UGEL */}
               <Route path="/ugel" element={guard(role, 'ugel', <Ugel />)} />
               <Route path="/ugel/mapa" element={guard(role, 'ugel', <MapaDiagnostico />)} />
+              <Route path="/ugel/profesores" element={guard(role, 'ugel', <UgelProfesores />)} />
+              <Route path="/ugel/profesores/:dni" element={guard(role, 'ugel', <UgelProfesorDetalle />)} />
+              <Route path="/ugel/alumnos" element={guard(role, 'ugel', <UgelAlumnos />)} />
+              <Route path="/ugel/alumnos/:id" element={guard(role, 'ugel', <UgelAlumnoDetalle />)} />
+              <Route path="/ugel/evidencias" element={guard(role, 'ugel', <UgelEvidencias />)} />
+              <Route path="/ugel/alertas" element={guard(role, 'ugel', <UgelAlertas />)} />
               <Route path="/ugel/usuarios" element={guard(role, 'ugel', <UgelUsuarios />)} />
+              {/* Transversal: mismo diccionario para los tres roles. */}
+              <Route path="/glosario" element={<Glosario />} />
               <Route path="*" element={<Navigate to={HOME[role]} />} />
             </Routes>
           </Shell>

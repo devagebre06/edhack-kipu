@@ -41,9 +41,9 @@ export function useMapa(course: string) {
 }
 
 /** Profesores UGEL 06 con score/%, distribución de logro y contexto sociodemográfico. */
-export function useProfesores(course: string, limit = 4) {
+export function useProfesores(course: string, limit?: number) {
   return useQuery({
-    queryKey: qk.profesores(course, limit),
+    queryKey: qk.profesores(course, limit ?? 0),
     queryFn: () => api.map.profesores(course === 'all' ? undefined : course, limit),
   })
 }
@@ -61,5 +61,33 @@ export function useUgelData() {
       ])
       return { institutions, artifacts, alerts, grades }
     },
+  })
+}
+
+/** Ficha de un docente: aulas, evolución de notas, competencias, unidades y scoring. */
+export function useProfesor(dni: string) {
+  return useQuery({
+    queryKey: qk.profesor(dni),
+    queryFn: () => api.map.profesor(dni),
+    enabled: !!dni,
+  })
+}
+
+/** Listado de alumnos con estadísticas agregadas (búsqueda y paginación en el backend). */
+export function useAlumnos(opts: { search?: string; colegio?: string; aula?: string; limit?: number; offset?: number } = {}) {
+  const { search = '', colegio = '', aula = '', limit = 50, offset = 0 } = opts
+  return useQuery({
+    queryKey: qk.alumnos(search, colegio, aula, limit, offset),
+    queryFn: () => api.map.alumnos({ search: search || undefined, colegio: colegio || undefined, aula: aula || undefined, limit, offset }),
+    placeholderData: (prev) => prev,   // evita el parpadeo al teclear en el buscador
+  })
+}
+
+/** Ficha de un alumno: serie de notas en el tiempo y desglose por competencia. */
+export function useAlumno(id: string) {
+  return useQuery({
+    queryKey: qk.alumno(id),
+    queryFn: () => api.map.alumno(id),
+    enabled: !!id,
   })
 }
