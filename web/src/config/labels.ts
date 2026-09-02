@@ -49,3 +49,10 @@ export const BADGE_STYLE: Record<string, string> = {
   ESCALATED: 'bg-nav/10 text-nav', RESOLVED: 'bg-ok-bg text-ok',
   LOW: 'bg-line/50 text-ink-soft', MEDIUM: 'bg-warn-bg text-warn', HIGH: 'bg-bad-bg text-bad', CRITICAL: 'bg-bad text-white',
 }
+
+/** Nombre corto de un periodo, para ejes y cabeceras estrechas.
+ *  "Evaluación Diagnóstica 2026" → "Diagnóstico" · "2026 · Bimestre 1" → "Bim. 1" */
+export const periodoCorto = (nombre: string) =>
+  /diagn/i.test(nombre)
+    ? 'Diagnóstico'
+    : nombre.replace(/^\d{4}\s*·\s*/, '').replace(/^Bimestre\s*/i, 'Bim. ')

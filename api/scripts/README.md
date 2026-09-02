@@ -20,10 +20,12 @@ SUPABASE_SERVICE_ROLE_KEY=...   # service role: omite RLS, ¡nunca lo expongas a
 
 | Comando | Archivo | Qué hace |
 | --- | --- | --- |
-| `npm run db:seed` | `seed.mjs` | Reinicia y siembra el demo completo: instituciones, usuarios, cursos, grupos, horarios, historial de evaluaciones, notas y alertas. Idempotente (borra antes de insertar). |
+| `npm run db:seed` | `seed.mjs` | Contenido que la data UGEL 06 no trae: periodos ordinarios, **1 especialista UGEL + 1 director** (en el colegio del docente demo), unidades/sesiones/evidencias/evaluaciones de muestra y alertas. Idempotente (borra antes de insertar). Correr **después** de `db:poblacion`. |
+| `npm run db:demo-users` | `demo-users.mjs` | Deja **un solo login por rol** (`ugel@`, `director@`, `profesor@kipu.demo`, contraseña `KipuDemo2026!`) y purga las demás cuentas de UGEL/director y las de Auth sin fila en `usuarios`. No toca a los 30 docentes: sostienen los dictados y las tarjetas del panel UGEL. Correr al final. |
 | `npm run db:add-user` | `add-user.mjs` | Alta rápida de usuarios demo adicionales (upsert, no borra nada). |
-| `npm run db:poblacion` | `poblacion.mjs` | Puebla el modelo diagnóstico **UGEL 06** (tablas `ugel06_*`) desde `data/ugel06_60_rubricas_diagnosticas.json` y `data/ugel06_1500_evaluaciones.json`, siguiendo el orden de FK del diagrama. Idempotente. Requiere aplicar antes `supabase/migrations/002_ugel06_diagnostico.sql`. |
-| `npm run db:migrate -- <archivo.sql>` | `apply-migration.mjs` | Aplica un `.sql` (DDL) contra Postgres. Requiere `SUPABASE_DB_URL` en `.env` con la cadena del **Session pooler** (el service-role JWT no ejecuta DDL). Útil porque no hay `supabase` CLI ni `psql`. |
+| `npm run db:poblacion` | `poblacion.mjs` | Puebla el **modelo unificado** con la data diagnóstica de UGEL 06 desde `data/ugel06_notas_diagnosticas_primaria.json` (+ contexto sociodemográfico), vía el adapter de ingesta y en orden de FK: ugel → canal → colegio → curso → profesor → aula → dictado → alumno → matrícula → nota. Idempotente (limpia solo lo mapeado por su fuente). |
+| `npm run db:generar-notas` | `generar-notas-diagnosticas.mjs` | Regenera `data/ugel06_notas_diagnosticas_primaria.json`: notas sintéticas con el formato de la plantilla real `docs/privado/EV. DIAGNÓSTICA PRIMARIA.xlsx` (acta por aula × área, matemática C1-C4 y comunicación C1-C3, escala C/B/A/AD, consolidado de logros). Determinista: misma semilla → mismo archivo. No toca la DB. |
+| `npm run db:migrate -- <archivo.sql>` | `apply-migration.mjs` | Aplica un `.sql` (DDL) contra Postgres. Requiere `SUPABASE_DB_URL` en `.env` con la cadena del **Session pooler** (el service-role JWT no ejecuta DDL). Útil porque no hay `supabase` CLI ni `psql`. La ruta se resuelve desde `scripts/`: pasar **ruta absoluta** (o `../../supabase/migrations/...`). |
 
 También pueden correrse directo:
 

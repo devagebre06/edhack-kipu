@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, GeoJSON, Popup, Tooltip } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Feature, Geometry } from 'geojson'
@@ -86,19 +86,47 @@ function DistBar({ distribution }: { distribution: MapaDistribution }) {
   )
 }
 
-// Tarjeta de profesor: a la izquierda su desempeño diagnóstico (score, % logrado,
-// distribución) y al lado la card con su contexto sociodemográfico.
+// Barra de un scoring 0-100 con su etiqueta.
+function ScoreBar({ label, value, hint }: { label: string; value: number; hint?: string }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-semibold tabular-nums">{value}</span>
+      </div>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} />
+      </div>
+      {hint && <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>}
+    </div>
+  )
+}
+
+// Tarjeta de profesor: a la izquierda su desempeño diagnóstico (scorings, %
+// logrado, distribución) y al lado la card con su contexto sociodemográfico.
 function ProfesorCard({ p }: { p: ProfesorResumen }) {
   const ctx = p.contexto
+  const s = p.scores
+  const va = s.valor_agregado
   return (
     <div className="grid gap-4 rounded-lg border bg-card p-4 shadow-xs md:grid-cols-[1fr_16rem]">
       {/* Desempeño */}
       <div>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="font-semibold">{p.full_name}</span>
+          <span className="font-semibold">
+            <span className="mr-1.5 text-muted-foreground tabular-nums">#{p.ranking}</span>
+            {p.full_name}
+          </span>
           <span className="text-xs text-muted-foreground">{p.course_name} · DNI {p.dni}</span>
         </div>
-        <div className="mt-3 flex items-center gap-6">
+
+        <div className="mt-3 flex flex-wrap items-center gap-6">
+          <div>
+            <div className="text-2xl font-semibold tabular-nums" style={{ color: s.nivel_color }}>
+              {s.global}<span className="text-sm text-muted-foreground">/100</span>
+            </div>
+            <div className="text-xs" style={{ color: s.nivel_color }}>{s.nivel_label}</div>
+          </div>
           <div>
             <div className="text-2xl font-semibold tabular-nums">{p.average_score_1_to_4 ?? '—'}<span className="text-sm text-muted-foreground">/4</span></div>
             <div className="text-xs text-muted-foreground">Promedio</div>
@@ -111,8 +139,23 @@ function ProfesorCard({ p }: { p: ProfesorResumen }) {
             <div className="text-2xl font-semibold tabular-nums">{p.total_evaluaciones}</div>
             <div className="text-xs text-muted-foreground">Estudiantes</div>
           </div>
+          {va != null && (
+            <div>
+              <div className={`text-2xl font-semibold tabular-nums ${va >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {va >= 0 ? '+' : ''}{va.toFixed(2)}
+              </div>
+              <div className="text-xs text-muted-foreground">vs. su distrito ({s.referencia_distrito ?? '—'})</div>
+            </div>
+          )}
         </div>
-        <div className="mt-3"><DistBar distribution={p.distribution} /></div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <ScoreBar label="Logro" value={s.logro} hint="promedio en la escala 1-4" />
+          <ScoreBar label="Equidad" value={s.equidad} hint="alumnos fuera de «En inicio»" />
+          <ScoreBar label="Cobertura" value={s.cobertura} hint="alumnos evaluados" />
+        </div>
+
+        <div className="mt-4"><DistBar distribution={p.distribution} /></div>
         <div className="mt-1 flex justify-between text-xs text-muted-foreground">
           {BUCKET_ORDER.map((b) => (
             <span key={b}>{BUCKET_LABEL[b]}: {p.distribution[b].count} ({p.distribution[b].pct}%)</span>
@@ -144,7 +187,19 @@ export default function MapaDiagnostico() {
   const [colorMode, setColorMode] = useState<ColorMode>('distrito')
   const [source, setSource] = useState<DataSource>('reales')
   const mapRef = useRef<LeafletMap | null>(null)
+  const cajaRef = useRef<HTMLDivElement | null>(null)
   const { data, isLoading } = useMapa(course)
+
+  // Leaflet calcula su tamaño al montar: si el contenedor cambia de ancho
+  // (colapsar la barra lateral, redimensionar la ventana) hay que avisarle, o
+  // quedan franjas sin teselas y el centro se desplaza.
+  useEffect(() => {
+    const caja = cajaRef.current
+    if (!caja) return
+    const ro = new ResizeObserver(() => mapRef.current?.invalidateSize())
+    ro.observe(caja)
+    return () => ro.disconnect()
+  }, [isLoading])
   const { data: profesores } = useProfesores(course, 4)
 
   if (isLoading || !data) return <Spinner text="Cargando mapa diagnóstico…" />
@@ -221,7 +276,7 @@ export default function MapaDiagnostico() {
       )}
 
       <Section title="Mapa por colegio">
-        <div className="relative overflow-hidden rounded-lg border">
+        <div ref={cajaRef} className="relative overflow-hidden rounded-lg border">
           <MapContainer ref={mapRef} center={CENTER} zoom={11} minZoom={10} maxZoom={18} style={{ height: 480, width: '100%' }} scrollWheelZoom>
             <TileLayer
               attribution='&copy; OpenStreetMap &copy; CARTO'
@@ -298,10 +353,30 @@ export default function MapaDiagnostico() {
         </p>
       </Section>
 
-      <Section title="Profesores destacados y su contexto">
+      <Section title="Docentes destacados · scoring y contexto">
         {profesores?.profesores.length ? (
           <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              El score compuesto combina{' '}
+              <strong>logro</strong> ({Math.round(profesores.scoring.pesos.logro * 100)}%),{' '}
+              <strong>equidad</strong> ({Math.round(profesores.scoring.pesos.equidad * 100)}%) y{' '}
+              <strong>cobertura</strong> ({Math.round(profesores.scoring.pesos.cobertura * 100)}%), calculados
+              sobre las notas diagnósticas de sus alumnos. El valor agregado compara su promedio con el de su
+              distrito. Referencia UGEL: {profesores.scoring.referencias.promedio_ugel ?? '—'}/4 sobre{' '}
+              {profesores.scoring.referencias.alumnos_evaluados} alumnos.
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              {profesores.scoring.niveles.map((n) => (
+                <span key={n.key} className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full" style={{ background: n.color }} />
+                  {n.label} <span className="text-muted-foreground">(≥{n.min})</span>
+                </span>
+              ))}
+            </div>
             {profesores.profesores.map((p) => <ProfesorCard key={p.dni} p={p} />)}
+            <p className="text-xs text-muted-foreground">
+              Mostrando {profesores.profesores.length} de {profesores.total} docentes, por score compuesto.
+            </p>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">Sin datos de profesores para este curso.</p>

@@ -209,7 +209,7 @@
                     <mxGeometry y="92" width="320" height="22" as="geometry"/>
                 </mxCell>
                 <mxCell id="aulas" value="aulas" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;collapsible=1;marginBottom=0;swimlaneFillColor=#ffffff;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
-                    <mxGeometry x="120" y="530" width="320" height="180" as="geometry"/>
+                    <mxGeometry x="120" y="530" width="320" height="224" as="geometry"/>
                 </mxCell>
                 <mxCell id="aulas__id" value="id  (PK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=5;" vertex="1" parent="aulas">
                     <mxGeometry y="26" width="320" height="22" as="geometry"/>
@@ -226,11 +226,17 @@
                 <mxCell id="aulas__seccion" value="seccion" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="aulas">
                     <mxGeometry y="114" width="320" height="22" as="geometry"/>
                 </mxCell>
-                <mxCell id="aulas__nombre" value="nombre" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="aulas">
+                <mxCell id="aulas__turno" value="turno" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="aulas">
                     <mxGeometry y="136" width="320" height="22" as="geometry"/>
                 </mxCell>
-                <mxCell id="aulas__es_sintetico" value="es_sintetico" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="aulas">
+                <mxCell id="aulas__nivel" value="nivel" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="aulas">
                     <mxGeometry y="158" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="aulas__nombre" value="nombre" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="aulas">
+                    <mxGeometry y="180" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="aulas__es_sintetico" value="es_sintetico" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="aulas">
+                    <mxGeometry y="202" width="320" height="22" as="geometry"/>
                 </mxCell>
                 <mxCell id="alumnos" value="alumnos" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;collapsible=1;marginBottom=0;swimlaneFillColor=#ffffff;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
                     <mxGeometry x="-600" y="840" width="320" height="158" as="geometry"/>
@@ -657,6 +663,45 @@
                 </mxCell>
                 <mxCell id="vw_notas_agregadas__promedio" value="promedio" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_notas_agregadas">
                     <mxGeometry y="114" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen" value="vw_aula_resumen  «view»" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;collapsible=1;marginBottom=0;swimlaneFillColor=#ffffff;fillColor=#d0cee2;strokeColor=#56517e;fontSize=12;" vertex="1" parent="1">
+                    <mxGeometry x="-1860" y="1422" width="320" height="290" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__aula_id" value="aula_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="26" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__grado" value="grado" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="48" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__seccion" value="seccion" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="70" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__turno" value="turno" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="92" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__colegio_id" value="colegio_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="114" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__colegio_nombre" value="colegio_nombre" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="136" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__curso_id" value="curso_id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="158" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__total" value="total" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="180" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__en_inicio" value="en_inicio" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="202" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__en_proceso" value="en_proceso" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="224" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__logrado" value="logrado" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="246" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="vw_aula_resumen__promedio" value="promedio" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
+                    <mxGeometry y="268" width="320" height="22" as="geometry"/>
                 </mxCell>
                 <mxCell id="e0" value="ugel_id" style="edgeStyle=entityRelationEdgeStyle;fontSize=10;html=1;rounded=0;startArrow=ERmany;startFill=0;endArrow=ERone;endFill=0;strokeColor=#666666;" parent="1" source="canales" target="ugels" edge="1">
                     <mxGeometry relative="1" as="geometry"/>

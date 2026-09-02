@@ -158,6 +158,26 @@ export type GradeRecord = {
   student_groups: StudentGroup
 }
 
+/** Logro diagnóstico agregado por aula × curso (vista `vw_aula_resumen`). */
+export type AulaResumen = {
+  aula_id: string
+  aula_nombre: string | null
+  grado: string | null
+  seccion: string | null
+  turno: string | null
+  colegio_nombre: string | null
+  course_key: string
+  curso_nombre: string | null
+  /** Alumnos con nota GENERAL en ese curso. */
+  total: number
+  /** Reparto por nivel de logro: C · B · A+AD. */
+  en_inicio: number
+  en_proceso: number
+  logrado: number
+  /** Promedio en la escala 1-4 (C=1 … AD=4). */
+  promedio: number
+}
+
 // ── Respuestas del backend/LLM ──
 export type UploadResult = {
   artifact_id: string
@@ -221,7 +241,7 @@ export type Horario = {
 export type Dictado = {
   id: string
   curso: { id: string; nombre: string } | null
-  aula: { id: string; grado: string | null; seccion: string | null; nombre: string | null } | null
+  aula: { id: string; grado: string | null; seccion: string | null; turno: string | null; nombre: string | null } | null
   periodo: { id: string; nombre: string } | null
   horarios: Horario[]
 }
@@ -234,7 +254,7 @@ export type HorarioDocente = {
 export type HorariosPanel = {
   teachers: HorarioDocente[]
   cursos: { id: string; nombre: string }[]
-  aulas: { id: string; seccion: string | null; grado: string | null; nombre: string | null }[]
+  aulas: { id: string; seccion: string | null; grado: string | null; turno: string | null; nombre: string | null }[]
   periodos: { id: string; nombre: string }[]
 }
 export type NewHorario = {
@@ -258,6 +278,24 @@ export type ProfesorContexto = {
   network_name: string | null
   educational_levels: string[]
 }
+export type ProfesorNivel = 'destacado' | 'esperado' | 'en_progreso' | 'acompanamiento'
+/** Scorings derivados del logro diagnóstico de los alumnos del docente. */
+export type ProfesorScores = {
+  /** 0-100: qué tan arriba está el promedio de sus alumnos en la escala 1-4. */
+  logro: number
+  /** 0-100: proporción de alumnos que NO quedó en nivel "En inicio". */
+  equidad: number
+  /** 0-100: alumnos evaluados, relativo al docente que más evaluó. */
+  cobertura: number
+  /** 0-100: compuesto ponderado (55% logro · 30% equidad · 15% cobertura). */
+  global: number
+  /** Promedio del docente menos el de su distrito (escala 1-4). */
+  valor_agregado: number | null
+  referencia_distrito: number | null
+  nivel: ProfesorNivel
+  nivel_label: string
+  nivel_color: string
+}
 export type ProfesorResumen = {
   dni: string
   full_name: string
@@ -266,12 +304,221 @@ export type ProfesorResumen = {
   total_evaluaciones: number
   average_score_1_to_4: number | null
   pct_logrado: number
+  pct_critico: number
   distribution: MapaDistribution
+  scores: ProfesorScores
+  ranking: number
   contexto: ProfesorContexto
 }
 export type ProfesoresResponse = {
   course: string
   buckets: Record<MapaBucket, { label: string; grades: string[]; color: string }>
   total: number
+  scoring: {
+    pesos: { logro: number; equidad: number; cobertura: number }
+    niveles: { key: ProfesorNivel; label: string; min: number; color: string }[]
+    referencias: {
+      promedio_ugel: number | null
+      alumnos_evaluados: number
+      max_alumnos_por_docente: number
+      promedio_por_distrito: Record<string, number | null>
+    }
+  }
   profesores: ProfesorResumen[]
+}
+
+// ── Alumnos UGEL (GET /api/v1/alumnos) ──
+export type NivelLogro = 'C' | 'B' | 'A' | 'AD'
+export type AlumnoFila = {
+  alumno_id: string
+  alumno_codigo: string | null
+  alumno_nombre: string
+  alumno_numero: number | null
+  colegio_id: string | null
+  colegio_nombre: string | null
+  aula_id: string | null
+  grado: string | null
+  seccion: string | null
+  turno: string | null
+  aula_nombre: string | null
+  notas: number
+  periodos: number
+  cursos: number
+  promedio_diagnostico: number | null
+  promedio_actual: number | null
+  promedio_global: number | null
+  fecha_ultima: string | null
+  nivel_actual: NivelLogro | null
+  nivel_actual_nombre: string | null
+  /** Promedio actual menos el del diagnóstico. */
+  delta: number | null
+}
+export type PeriodoPunto = {
+  periodo_id: string
+  periodo_nombre: string
+  fecha: string | null
+  tipo: string
+  alumnos: number
+  promedio: number | null
+  distribution: MapaDistribution
+}
+export type AlumnosResponse = {
+  buckets: Record<MapaBucket, { label: string; grades: string[]; color: string }>
+  total: number
+  totals: {
+    alumnos: number
+    colegios: number
+    aulas: number
+    promedio_actual: number | null
+    promedio_diagnostico: number | null
+    avance_promedio: number | null
+  }
+  distribucion: MapaDistribution
+  evolucion: PeriodoPunto[]
+  cursos: { course_key: string; curso_nombre: string; registros: number; promedio: number | null; distribution: MapaDistribution }[]
+  avance: { suben: number; estables: number; bajan: number; promedio: number | null }
+  alumnos: AlumnoFila[]
+}
+
+// ── Ficha de alumno (GET /api/v1/alumnos/:id) ──
+export type AlumnoSeriePunto = {
+  periodo_id: string
+  periodo: string
+  fecha: string | null
+  tipo: string
+  promedio: number | null
+  /** Además: una clave por course_key con su promedio, y `<course_key>_nivel`. */
+  [key: string]: unknown
+}
+export type AlumnoDetalle = {
+  buckets: Record<MapaBucket, { label: string; grades: string[]; color: string }>
+  alumno: AlumnoFila
+  docentes: { course_key: string; curso_nombre: string | null; profesor_id: string | null; profesor_nombre: string | null }[]
+  periodos: { periodo_id: string; nombre: string; tipo: string; bimestre: number | null; fecha: string | null }[]
+  serie: AlumnoSeriePunto[]
+  detalle: {
+    periodo: string; fecha: string | null; tipo_evaluacion: string
+    course_key: string; curso_nombre: string | null
+    promedio: number | null; nivel: NivelLogro | null; nivel_nombre: string | null
+    profesor_nombre: string | null
+  }[]
+  competencias: {
+    course_key: string
+    curso_nombre: string | null
+    competencias: {
+      codigo: string
+      nombre: string
+      periodos: { periodo_id: string; periodo: string; fecha: string | null; puntaje: number | null; nivel: NivelLogro | null }[]
+    }[]
+  }[]
+}
+
+// ── Ficha de docente (GET /api/v1/profesores/:dni) ──
+export type ProfesorAula = {
+  dictado_id: string
+  aula_id: string | null
+  aula_nombre: string | null
+  grado: string | null
+  seccion: string | null
+  turno: string | null
+  nivel: string | null
+  colegio_id: string | null
+  colegio_nombre: string | null
+  course_key: string | null
+  curso_nombre: string | null
+  periodo: string | null
+  alumnos: number
+  promedio_diagnostico: number | null
+  promedio_actual: number | null
+  avance: number | null
+  distribution: MapaDistribution
+  scores: { logro: number; equidad: number }
+}
+export type ProfesorUnidad = {
+  id: string
+  nombre: string
+  orden: number | null
+  created_at: string
+  curso_nombre: string | null
+  aula_nombre: string | null
+  sesiones: { id: string; nombre: string; fecha: string | null; orden: number | null }[]
+  evidencias: {
+    id: string; estado: string; version_actual: number; created_at: string
+    puntaje: number | null; decision: string | null; resumen: string | null; versiones: number
+  }[]
+  puntaje: number | null
+}
+export type ProfesorDetalle = {
+  profesor: ProfesorResumen
+  scoring: ProfesoresResponse['scoring']
+  contacto: { dni: string; telefono: string | null }
+  totales: {
+    aulas: number; alumnos: number; notas: number; periodos: number
+    unidades: number; sesiones: number; evidencias: number; evidencias_observadas: number
+    puntaje_evidencias: number | null
+  }
+  aulas: ProfesorAula[]
+  evolucion: { periodo_id: string; periodo: string; tipo: string; fecha: string | null; alumnos: number; promedio: number | null; distribution: MapaDistribution }[]
+  competencias: {
+    codigo: string; course_key: string; nombre: string; registros: number
+    promedio: number | null; nivel: NivelLogro | null; nivel_nombre: string | null
+    distribution: MapaDistribution
+  }[]
+  unidades: ProfesorUnidad[]
+}
+
+// ── Motor de alertas (GET/POST /api/v1/alertas) ──
+export type AlertaRegla = {
+  codigo: string
+  nombre: string
+  descripcion: string
+  fuente: string
+  umbral_default: number
+  umbral_unidad: string
+}
+export type AlertaOrigen = 'motor' | 'seed' | 'manual'
+export type AlertaFila = {
+  id: string
+  tipo: string
+  severidad: Severity
+  estado: AlertStatus
+  titulo: string
+  resumen: string
+  accion_sugerida: string
+  colegio_id: string | null
+  colegio_nombre: string | null
+  evidencia: Record<string, unknown>
+  historial: { estado: string; desde?: string; motivo?: string | null; at: string }[]
+  origen: AlertaOrigen
+  created_at: string
+}
+export type AlertasResponse = {
+  total: number
+  totals: { total: number; abiertas: number; nuevas: number; criticas: number; colegios: number }
+  por_estado: Record<string, number>
+  por_severidad: Record<string, number>
+  por_tipo: Record<string, number>
+  reglas: AlertaRegla[]
+  alertas: AlertaFila[]
+}
+export type EvaluacionAlertas = {
+  dry_run: boolean
+  evaluadas: string[]
+  umbrales: Record<string, number>
+  candidatas: number
+  por_regla: Record<string, number>
+  omitidas_por_duplicado: number
+  creadas: number
+  detalle: {
+    tipo: string; severidad: Severity; titulo: string; resumen: string
+    accion_sugerida: string; colegio_id: string | null; evidencia: Record<string, unknown>
+  }[]
+}
+export type NuevaAlerta = {
+  tipo: string
+  severidad: Severity
+  colegio_id?: string | null
+  titulo: string
+  resumen: string
+  accion_sugerida: string
 }

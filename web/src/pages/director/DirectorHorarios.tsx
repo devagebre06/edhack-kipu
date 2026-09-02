@@ -16,8 +16,11 @@ const WEEKDAYS = [
 ]
 const dayLabel = (n: number) => WEEKDAYS.find((d) => d.n === n)?.label ?? '—'
 const hhmm = (t: string) => String(t).slice(0, 5)
-const aulaLabel = (a: { grado: string | null; seccion: string | null; nombre: string | null } | null) =>
-  a ? [a.grado, a.seccion].filter(Boolean).join(' ') || a.nombre || '—' : '—'
+const aulaLabel = (a: { grado: string | null; seccion: string | null; turno?: string | null; nombre: string | null } | null) => {
+  if (!a) return '—'
+  const aula = [a.grado, a.seccion].filter(Boolean).join(' ') || a.nombre || '—'
+  return a.turno ? `${aula} · ${a.turno}` : aula
+}
 
 const EMPTY: NewHorario = { profesor_id: '', curso_id: '', aula_id: '', periodo_id: '', dia_semana: 1, hora_inicio: '08:00', hora_fin: '09:30' }
 

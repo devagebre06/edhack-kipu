@@ -13,6 +13,11 @@ export const qk = {
   ugel: ['ugel'] as const,
   mapa: (course: string) => ['mapa', course] as const,
   profesores: (course: string, limit: number) => ['profesores', course, limit] as const,
+  profesor: (dni: string) => ['profesor', dni] as const,
+  alumnos: (search: string, colegio: string, aula: string, limit: number, offset: number) =>
+    ['alumnos', search, colegio, aula, limit, offset] as const,
+  alumno: (id: string) => ['alumno', id] as const,
+  alertas: (estado: string, severidad: string, tipo: string) => ['alertas', estado, severidad, tipo] as const,
   horarios: ['horarios'] as const,
   usuarios: ['usuarios'] as const,
 }

@@ -42,8 +42,17 @@ function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
   )
 }
 
+// El padding superior de una Card lo aporta CardHeader (`pt-6`). Cuando la card
+// no lleva header —el caso habitual en este proyecto— el contenido quedaba
+// pegado al borde: por eso `[&:first-child]:pt-6`, simétrico al `pb-6` de abajo.
 function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="card-content" className={cn('px-6 [&:last-child]:pb-6', className)} {...props} />
+  return (
+    <div
+      data-slot="card-content"
+      className={cn('px-6 [&:first-child]:pt-6 [&:last-child]:pb-6', className)}
+      {...props}
+    />
+  )
 }
 
 function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {

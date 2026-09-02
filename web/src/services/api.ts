@@ -12,7 +12,7 @@
 
 import { supabase } from './supabase'
 import { postForm, getJson, postJson, patchJson, delJson } from './http'
-import type { Alert, Artifact, ClassSchedule, Dictado, GradeRecord, Horario, HorariosPanel, Institution, MapaResponse, NewHorario, NewUsuario, ProfesoresResponse, Profile, UploadResult, UsuarioRow, UsuariosPanel } from '@/types'
+import type { Alert, AlertaFila, AlertasResponse, AlumnoDetalle, AlumnosResponse, Artifact, AulaResumen, EvaluacionAlertas, NuevaAlerta, ClassSchedule, Dictado, Horario, ProfesorDetalle, HorariosPanel, Institution, MapaResponse, NewHorario, NewUsuario, ProfesoresResponse, Profile, UploadResult, UsuarioRow, UsuariosPanel } from '@/types'
 
 // ─────────────────────────────────────────────────────────────
 // LLM — motor de evaluación (backend /api/v1)
@@ -56,6 +56,8 @@ function toArtifact(ev: any): Artifact {
     created_at: ev.created_at,
     name: isUnit ? ev.unidades?.nombre : ev.sesiones?.nombre,
     teacher_id: ev.profesor_id,
+    // Colegio de la evidencia = colegio del docente (el panel UGEL agrupa por él).
+    institution_id: ev.usuarios?.colegio_id ?? undefined,
     // unit_id: para agrupar sesiones bajo su unidad se usa el id de la UNIDAD.
     unit_id: isUnit ? ev.unidades?.id : ev.sesiones?.unidad_id,
     profiles: ev.usuarios ? { full_name: ev.usuarios.nombre_completo } : null,
@@ -97,7 +99,7 @@ export const db = {
   dictadosByTeacher(teacherId: string) {
     return mapRows<Dictado>(supabase
       .from('dictados')
-      .select('id, cursos(id, nombre), aulas(id, grado, seccion, nombre), periodos_academicos(id, nombre), horarios(id, dia_semana, hora_inicio, hora_fin)')
+      .select('id, cursos(id, nombre), aulas(id, grado, seccion, turno, nombre), periodos_academicos(id, nombre), horarios(id, dia_semana, hora_inicio, hora_fin)')
       .eq('profesor_id', teacherId), (d: any) => ({
         id: d.id, curso: d.cursos, aula: d.aulas, periodo: d.periodos_academicos,
         horarios: (d.horarios ?? []) as Horario[],
@@ -169,9 +171,16 @@ export const db = {
     return mapRows<Alert>(supabase.from('alertas').select('*, colegios(nombre)')
       .order('created_at', { ascending: false }), toAlert)
   },
-  /** Notas agregadas por aula (deferido: la card de grupos bajos se poblará al conectar notas). */
-  grades(): Promise<GradeRecord[]> {
-    return Promise.resolve([])
+  /** Logro diagnóstico agregado por aula × curso (vista vw_aula_resumen). */
+  grades() {
+    return mapRows<AulaResumen>(supabase.from('vw_aula_resumen')
+      .select('aula_id, aula_nombre, grado, seccion, turno, colegio_nombre, course_key, curso_nombre, total, en_inicio, en_proceso, logrado, promedio'),
+      (r: any) => ({
+        aula_id: r.aula_id, aula_nombre: r.aula_nombre, grado: r.grado, seccion: r.seccion, turno: r.turno,
+        colegio_nombre: r.colegio_nombre, course_key: r.course_key, curso_nombre: r.curso_nombre,
+        total: r.total ?? 0, en_inicio: r.en_inicio ?? 0, en_proceso: r.en_proceso ?? 0,
+        logrado: r.logrado ?? 0, promedio: Number(r.promedio ?? 0),
+      }))
   },
 }
 
@@ -188,6 +197,21 @@ export const map = {
     if (limit) params.set('limit', String(limit))
     const qs = params.toString()
     return getJson<ProfesoresResponse>(`/api/v1/profesores${qs ? `?${qs}` : ''}`)
+  },
+  /** Ficha del docente: aulas, evolución, competencias, unidades y scoring. */
+  profesor(dni: string) {
+    return getJson<ProfesorDetalle>(`/api/v1/profesores/${encodeURIComponent(dni)}`)
+  },
+  /** Listado de alumnos con estadísticas agregadas. */
+  alumnos(opts: { search?: string; colegio?: string; aula?: string; limit?: number; offset?: number } = {}) {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(opts)) if (v !== undefined && v !== '') params.set(k, String(v))
+    const qs = params.toString()
+    return getJson<AlumnosResponse>(`/api/v1/alumnos${qs ? `?${qs}` : ''}`)
+  },
+  /** Ficha del alumno: serie de notas en el tiempo y desglose por competencia. */
+  alumno(id: string) {
+    return getJson<AlumnoDetalle>(`/api/v1/alumnos/${encodeURIComponent(id)}`)
   },
 }
 
@@ -252,5 +276,33 @@ export const files = {
   },
 }
 
-export const api = { llm, db, map, horarios, usuarios, files }
+// ─────────────────────────────────────────────────────────────
+// ALERTAS — motor de reglas (backend /api/v1/alertas, solo UGEL)
+// ─────────────────────────────────────────────────────────────
+export const alertas = {
+  /** Listado con estadísticas y catálogo de reglas. */
+  list(filtros: { estado?: string; severidad?: string; tipo?: string; colegio?: string } = {}) {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(filtros)) if (v) params.set(k, v)
+    const qs = params.toString()
+    return getJson<AlertasResponse>(`/api/v1/alertas${qs ? `?${qs}` : ''}`)
+  },
+  /** Corre el motor. Con `dry_run` devuelve lo que haría sin escribir nada. */
+  evaluar(payload: { dry_run?: boolean; reglas?: string[]; umbrales?: Record<string, number> } = {}) {
+    return postJson<EvaluacionAlertas>('/api/v1/alertas/evaluar', payload)
+  },
+  /** Alta manual, para probar el flujo de punta a punta. */
+  crear(payload: NuevaAlerta) {
+    return postJson<AlertaFila>('/api/v1/alertas', payload)
+  },
+  cambiarEstado(id: string, estado: string, motivo?: string) {
+    return patchJson<AlertaFila>(`/api/v1/alertas/${id}`, { estado, motivo })
+  },
+  /** Borra las alertas generadas (motor o manuales) tras las pruebas. */
+  limpiar(origen: 'motor' | 'manual' | 'todas') {
+    return delJson<{ borradas: number }>(`/api/v1/alertas?origen=${origen}`)
+  },
+}
+
+export const api = { llm, db, map, horarios, usuarios, files, alertas }
 export default api
