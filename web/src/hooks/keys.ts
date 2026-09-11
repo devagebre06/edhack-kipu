@@ -17,7 +17,12 @@ export const qk = {
   alumnos: (search: string, colegio: string, aula: string, limit: number, offset: number) =>
     ['alumnos', search, colegio, aula, limit, offset] as const,
   alumno: (id: string) => ['alumno', id] as const,
+  misAlumnos: (search: string, aula: string, limit: number, offset: number) =>
+    ['mis-alumnos', search, aula, limit, offset] as const,
   alertas: (estado: string, severidad: string, tipo: string) => ['alertas', estado, severidad, tipo] as const,
+  competencias: ['competencias'] as const,
+  evaluacion: ['evaluacion-config'] as const,
+  registroNotas: (dictado: string, periodo: string) => ['registro-notas', dictado, periodo] as const,
   horarios: ['horarios'] as const,
   usuarios: ['usuarios'] as const,
 }

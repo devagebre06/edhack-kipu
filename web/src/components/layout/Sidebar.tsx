@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import type { Role } from '@/types'
 import {
   Calendar, Upload, FileText, ListChecks, LayoutDashboard, Bell,
-  Globe, Map, Users, Layers, GraduationCap, UserRound, BookOpen, type LucideIcon,
+  Globe, Map, Users, Layers, GraduationCap, UserRound, BookOpen, ClipboardList, Target, ScrollText, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -60,6 +60,11 @@ function TeacherNav({ collapsed }: { collapsed?: boolean }) {
         <NavItem to="/profesor/unidades" label="Mis unidades" icon={FileText} collapsed={collapsed} />
         <NavItem to="/profesor/entregas" label="Mis entregas" icon={ListChecks} collapsed={collapsed} />
       </NavSection>
+      <NavSection label="Evaluación" collapsed={collapsed}>
+        <NavItem to="/profesor/notas" label="Registro de notas" icon={ClipboardList} collapsed={collapsed} />
+        <NavItem to="/profesor/competencias" label="Mis competencias" icon={Target} collapsed={collapsed} />
+        <NavItem to="/profesor/alumnos" label="Mis estudiantes" icon={UserRound} collapsed={collapsed} />
+      </NavSection>
     </>
   )
 }
@@ -90,9 +95,12 @@ function UgelNav({ collapsed }: { collapsed?: boolean }) {
       <NavSection label="Seguimiento" collapsed={collapsed}>
         <NavItem to="/ugel/evidencias" label="Unidades y sesiones" icon={FileText} collapsed={collapsed} />
         <NavItem to="/ugel/alertas" label="Alertas" icon={Bell} collapsed={collapsed} />
+        <NavItem to="/como-se-evalua" label="Cómo se evalúa" icon={ScrollText} collapsed={collapsed} />
       </NavSection>
       <NavSection label="Administración" collapsed={collapsed}>
         <NavItem to="/ugel/usuarios" label="Usuarios" icon={Users} collapsed={collapsed} />
+        {/* El glosario documenta los indicadores agregados: es de uso UGEL. */}
+        <NavItem to="/glosario" label="Glosario" icon={BookOpen} collapsed={collapsed} />
       </NavSection>
     </>
   )
@@ -104,10 +112,6 @@ export function Sidebar({ role, collapsed }: { role: Role; collapsed?: boolean }
       {role === 'teacher' && <TeacherNav collapsed={collapsed} />}
       {role === 'director' && <DirectorNav collapsed={collapsed} />}
       {role === 'ugel' && <UgelNav collapsed={collapsed} />}
-      {/* El glosario es transversal: los tres roles comparten el mismo diccionario. */}
-      <NavSection label="Ayuda" collapsed={collapsed}>
-        <NavItem to="/glosario" label="Glosario" icon={BookOpen} collapsed={collapsed} />
-      </NavSection>
     </nav>
   )
 }

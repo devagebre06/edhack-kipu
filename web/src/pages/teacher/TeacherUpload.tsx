@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useProfile, useTeacherDictados, useTeacherUnits, useSubmitArtifact } from '@/hooks'
+import { Link, useNavigate } from 'react-router-dom'
+import { useProfile, useTeacherDictados, useTeacherUnits, useSubmitArtifact, useConfigEvaluacion } from '@/hooks'
 import { Spinner } from '@/components'
 import {
   Button, Input, Label, Alert, AlertDescription, Separator,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui'
-import { CheckCircle2, AlertCircle, FileText, Upload, ArrowRight } from 'lucide-react'
+import { CheckCircle2, AlertCircle, FileText, Upload, ArrowRight, ScrollText, ExternalLink } from 'lucide-react'
 import type { Artifact, Dictado } from '@/types'
 
 // Tipos de evidencia que sube el docente en el modelo unificado.
@@ -24,6 +24,7 @@ export default function TeacherUpload() {
   const { data: dictados } = useTeacherDictados(profile.id)
   const { data: units } = useTeacherUnits(profile.id)
   const submitArtifact = useSubmitArtifact()
+  const motor = useConfigEvaluacion().data?.motor
 
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -212,7 +213,54 @@ export default function TeacherUpload() {
         </form>
       )}
 
-      <div className="mt-6 rounded-xl border bg-card p-4 text-sm shadow-xs">
+      {/* Transparencia: qué motor evalúa la entrega y con qué criterios. */}
+      <div className="mt-6 overflow-hidden rounded-xl border bg-card shadow-xs">
+        <Link
+          to="/como-se-evalua"
+          className="group flex items-start gap-3 p-4 transition-colors hover:bg-muted/50"
+        >
+          <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <ScrollText className="size-4.5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5 text-sm font-semibold">
+              Cómo funciona el motor que evalúa tu {isUnit ? 'unidad' : 'sesión'}
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+            <span className="mt-0.5 block text-sm text-muted-foreground">
+              El recorrido paso a paso de tu entrega, la ficha de monitoreo con la que se compara y las
+              instrucciones exactas que recibe la IA. Nada es una caja negra.
+            </span>
+            {motor && (
+              <span className="mt-2 flex flex-wrap gap-1.5">
+                {[
+                  `Modelo ${motor.modelo}`,
+                  `Rúbrica ${motor.rubrica_version}`,
+                  `Mínimo ${motor.puntaje_minimo_valida}/100`,
+                  `${motor.formatos.join(' · ')} hasta ${motor.max_mb} MB`,
+                ].map(t => (
+                  <span key={t} className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
+                    {t}
+                  </span>
+                ))}
+              </span>
+            )}
+          </span>
+        </Link>
+        {motor && (
+          <a
+            href={motor.modelo_docs}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 border-t px-4 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+          >
+            <ExternalLink className="size-3.5 shrink-0" />
+            Especificaciones técnicas de {motor.modelo} (documentación de Google)
+          </a>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-xl border bg-card p-4 text-sm shadow-xs">
         <h3 className="font-semibold">¿Qué subir y cuándo?</h3>
         <ul className="mt-2 space-y-1 text-muted-foreground">
           <li><span className="font-medium text-foreground">Unidad de aprendizaje</span> — al inicio de cada mes escolar. Debe subirse antes que sus sesiones.</li>

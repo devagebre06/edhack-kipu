@@ -703,6 +703,30 @@
                 <mxCell id="vw_aula_resumen__promedio" value="promedio" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="vw_aula_resumen">
                     <mxGeometry y="268" width="320" height="22" as="geometry"/>
                 </mxCell>
+                <mxCell id="competencias_dictado" value="competencias_dictado" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;collapsible=1;marginBottom=0;swimlaneFillColor=#ffffff;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+                    <mxGeometry x="1010" y="1710" width="320" height="158" as="geometry"/>
+                </mxCell>
+                <mxCell id="competencias_dictado__id" value="id  (PK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=5;" vertex="1" parent="competencias_dictado">
+                    <mxGeometry y="26" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="competencias_dictado__dictado_id" value="dictado_id  (FK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=2;" vertex="1" parent="competencias_dictado">
+                    <mxGeometry y="48" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="competencias_dictado__competencia" value="competencia" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="competencias_dictado">
+                    <mxGeometry y="70" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="competencias_dictado__estado" value="estado" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="competencias_dictado">
+                    <mxGeometry y="92" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="competencias_dictado__nota" value="nota" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="competencias_dictado">
+                    <mxGeometry y="114" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="competencias_dictado__updated_at" value="updated_at" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];portConstraint=eastwest;fontSize=11;fontStyle=0;" vertex="1" parent="competencias_dictado">
+                    <mxGeometry y="136" width="320" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_comp_dictado" value="dictado_id" style="edgeStyle=entityRelationEdgeStyle;fontSize=10;html=1;rounded=0;startArrow=ERmany;startFill=0;endArrow=ERone;endFill=0;strokeColor=#666666;" parent="1" source="competencias_dictado" target="dictados" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
                 <mxCell id="e0" value="ugel_id" style="edgeStyle=entityRelationEdgeStyle;fontSize=10;html=1;rounded=0;startArrow=ERmany;startFill=0;endArrow=ERone;endFill=0;strokeColor=#666666;" parent="1" source="canales" target="ugels" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>

@@ -350,6 +350,8 @@ export type AlumnoFila = {
   fecha_ultima: string | null
   nivel_actual: NivelLogro | null
   nivel_actual_nombre: string | null
+  nivel_diagnostico: NivelLogro | null
+  nivel_diagnostico_nombre: string | null
   /** Promedio actual menos el del diagnóstico. */
   delta: number | null
 }
@@ -521,4 +523,133 @@ export type NuevaAlerta = {
   titulo: string
   resumen: string
   accion_sugerida: string
+}
+
+// ── Registro de notas del docente (GET/POST /api/v1/notas/registro) ──
+export type PeriodoAcademico = {
+  id: string
+  nombre: string
+  tipo: string
+  bimestre: number | null
+  anio: number
+  fecha_inicio: string | null
+  fecha_fin: string | null
+}
+export type AlumnoRegistro = {
+  id: string
+  codigo: string | null
+  numero: number | null
+  nombre: string
+  /** Nivel ya registrado por competencia: { C1: 'A', C2: 'B' }. */
+  notas: Record<string, string>
+}
+export type RegistroNotas = {
+  dictado: {
+    id: string
+    curso: string | null
+    course_key: string
+    aula: string
+    grado: string | null
+    seccion: string | null
+    turno: string | null
+    colegio: string | null
+  }
+  periodo: PeriodoAcademico
+  periodos: PeriodoAcademico[]
+  escala: { codigo: string; nombre: string; valor: number }[]
+  competencias: { codigo: string; nombre: string }[]
+  alumnos: AlumnoRegistro[]
+}
+export type ResultadoRegistro = {
+  ok: true
+  guardadas: number
+  alumnos: number
+  periodo: string
+  curso: string | null
+  aula: string | null
+}
+
+// ── Competencias del docente (GET/PUT /api/v1/competencias) ──
+export type EstadoCompetencia = 'PENDIENTE' | 'FOCO' | 'REFORZANDO' | 'CONSOLIDADA'
+export type CompetenciaDocente = {
+  codigo: string
+  nombre: string
+  alumnos: number
+  promedio: number | null
+  promedio_diagnostico: number | null
+  avance: number | null
+  nivel: NivelLogro | null
+  nivel_nombre: string | null
+  distribution: MapaDistribution
+  /** Seguimiento que gestiona el docente. */
+  estado: EstadoCompetencia
+  nota: string
+  actualizado: string | null
+}
+export type DictadoCompetencias = {
+  dictado_id: string
+  curso: string | null
+  course_key: string
+  aula: string
+  turno: string | null
+  colegio: string | null
+  competencias: CompetenciaDocente[]
+}
+export type CompetenciasResponse = {
+  estados: { key: EstadoCompetencia; label: string; descripcion: string }[]
+  buckets: Record<MapaBucket, { label: string; grades: string[]; color: string }>
+  dictados: DictadoCompetencias[]
+}
+
+// ── Cómo se evalúa (GET /api/v1/evaluacion) ──
+export type PasoEvaluacion = {
+  clave: string
+  titulo: string
+  /** Nombre corto para el nodo del pipeline. */
+  etiqueta: string
+  quien: 'IA' | 'servidor'
+  descripcion: string
+  entrada: string
+  salida: string
+  aplica: ('UNIDAD' | 'SESION')[]
+  devuelve?: { documentos: string[]; identificacion: string[] }
+  /** Claves de los prompts que se envían en este paso. */
+  prompts: string[]
+}
+export type ConfigEvaluacion = {
+  motor: {
+    modelo: string
+    /** Ficha técnica pública del modelo. */
+    modelo_docs: string
+    prompt_version: string
+    rubrica_version: string
+    formatos: string[]
+    max_mb: number
+    puntaje_minimo_valida: number
+    confianza_minima: number
+    cortes_nivel: { desde: number; nivel: string }[]
+    limite_texto: number
+  }
+  pasos: PasoEvaluacion[]
+  decisiones: { estado: string; label: string; regla: string }[]
+  rubrica: {
+    /** Documento oficial del que sale la rúbrica. */
+    fuente: {
+      titulo: string
+      asunto: string
+      emisor: string
+      fecha: string
+      expediente: string
+      secciones: string[]
+      url: string
+    }
+    dimensiones: { clave: string; nombre: string }[]
+    valoraciones: { codigo: string; label: string; puntaje: number | null; nota: string }[]
+    items: { numero: number; dimension: string; dimension_nombre: string; nombre: string; excluido: boolean }[]
+    excluidos: number[]
+    nota_excluidos: string
+    desempenos: { numero: number; nombre: string }[]
+    nota_desempenos: string
+  }
+  prompts: { clave: string; titulo: string; cuando: string; texto: string }[]
 }
