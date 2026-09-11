@@ -2,9 +2,9 @@
 import { gemini } from './gemini.client.ts'
 import { DOC_KEYS, ID_KEYS, ExtractionSchema, type Extraction } from './rubric.ts'
 
-export async function extract(markdown: string): Promise<Extraction> {
-  return ExtractionSchema.parse(await gemini({
-    contents: [{ parts: [{ text: `Eres un asistente de la UGEL 06 que prepara documentos de planificación docente para su evaluación. Analiza el siguiente documento extraído de la carpeta pedagógica de un docente y responde SOLO el JSON pedido, sin evaluar todavía.
+/** Prompt del paso 1. Exportado para que la pantalla «Cómo se evalúa» muestre
+ *  exactamente el que se usa, sin mantener una copia aparte. */
+export const promptExtraccion = (documento: string) => `Eres un asistente de la UGEL 06 que prepara documentos de planificación docente para su evaluación. Analiza el siguiente documento extraído de la carpeta pedagógica de un docente y responde SOLO el JSON pedido, sin evaluar todavía.
 
 1. documentos_presentes: marca true/false qué documentos contiene: insumos (informe psicopedagógico/PEP o caracterización de estudiantes), planificacion_anual, unidad_didactica, sesion_aprendizaje, instrumentos_evaluacion (rúbricas, listas de cotejo, etc.).
 2. identificacion: extrae ie, docente, nivel, area, grado_seccion, competencia, unidad (título de la unidad), sesion (título de la sesión). Si un dato no aparece escribe exactamente "No consignado".
@@ -12,7 +12,11 @@ export async function extract(markdown: string): Promise<Extraction> {
 4. legible: false solo si el contenido es mayormente ilegible o vacío.
 
 DOCUMENTO:
-${markdown.slice(0, 60000)}` }] }],
+${documento}`
+
+export async function extract(markdown: string): Promise<Extraction> {
+  return ExtractionSchema.parse(await gemini({
+    contents: [{ parts: [{ text: promptExtraccion(markdown.slice(0, 60000)) }] }],
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: {

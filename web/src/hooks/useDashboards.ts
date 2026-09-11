@@ -91,3 +91,18 @@ export function useAlumno(id: string) {
     enabled: !!id,
   })
 }
+
+/** Alumnos del docente (solo los de las aulas donde dicta). */
+export function useMisAlumnos(opts: { search?: string; aula?: string; limit?: number; offset?: number } = {}) {
+  const { search = '', aula = '', limit = 25, offset = 0 } = opts
+  return useQuery({
+    queryKey: qk.misAlumnos(search, aula, limit, offset),
+    queryFn: () => api.docente.misAlumnos({ search: search || undefined, aula: aula || undefined, limit, offset }),
+    placeholderData: (prev) => prev,
+  })
+}
+
+/** Configuración del motor de evaluación (rúbrica, prompts y flujo). */
+export function useConfigEvaluacion() {
+  return useQuery({ queryKey: qk.evaluacion, queryFn: () => api.evaluacion.config(), staleTime: 5 * 60_000 })
+}

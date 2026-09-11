@@ -61,6 +61,12 @@
 -- contextos_ia(id pk, unidad_id→unidades [null,u], sesion_id→sesiones [null,u],
 --          contexto jsonb, created_at; CHECK exactly-one)  -- OCULTO por RLS
 
+-- ── Seguimiento de competencias del docente (migración 015) ──────────────────
+-- competencias_dictado(id pk, dictado_id→dictados, competencia [C1..C4],
+--          estado [PENDIENTE|FOCO|REFORZANDO|CONSOLIDADA], nota, updated_at;
+--          unique(dictado_id,competencia))
+--          -- El desempeño NO se guarda aquí: se calcula desde `notas`.
+
 -- ── Notas ────────────────────────────────────────────────────────────────────
 -- escala_logro(id pk, codigo u = C|B|A|AD, nombre, valor_numerico 1..4)
 -- notas(id pk, alumno_id→alumnos, curso_id→cursos, periodo_id→periodos,
@@ -85,8 +91,13 @@
 -- vw_profesor_resumen         — logro agregado por profesor + contexto colegio
 -- vw_aula_resumen             — logro por aula×curso (grado/sección/turno + C/B/A-AD)
 --                               [migración 011; alimenta "grupos preocupantes" del panel UGEL]
+-- vw_alumno_nota_periodo      — serie: nota GENERAL por alumno×curso×periodo (+aula, docente)
+-- vw_alumno_resumen           — una fila por alumno: diagnóstico → actual [migración 012]
+-- vw_periodo_aula_resumen     — evolución pre-agregada por periodo×aula×curso [migración 013]
 
 -- ── Enums / RLS / triggers ───────────────────────────────────────────────────
 -- Enums: ver 00_enums.sql. RLS habilitado en todas; helpers mi_rol()/mi_colegio().
 -- Triggers: assert_rol_profesor (dictados/evidencias), touch_updated_at,
---           log_alerta_cambio (auditoría de estado de alertas).
+--           log_alerta_cambio (auditoría de estado de alertas),
+--           touch_competencias_dictado (migración 015).
+-- Realtime: `alertas` está en la publicación supabase_realtime [migración 014].

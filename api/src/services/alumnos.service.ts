@@ -135,12 +135,16 @@ function distribucionDeNiveles(niveles: (Codigo | null)[]) {
 // ── Listado + estadísticas generales ─────────────────────────────────────────
 export async function buildAlumnos(opts: {
   search?: string; colegio?: string; aula?: string; limit?: number; offset?: number
+  /** Acota el resultado a estas aulas (alcance del docente o del director). */
+  aulasPermitidas?: string[]
 } = {}) {
   const rows = await todas<ResumenRow>('vw_alumno_resumen', '*')
+  const permitidas = opts.aulasPermitidas ? new Set(opts.aulasPermitidas) : null
 
   // Filtros (en memoria: son 881 filas y evita repetir la consulta por faceta).
   const search = opts.search?.trim().toLowerCase()
   const filtrados = rows.filter((r) => {
+    if (permitidas && !(r.aula_id && permitidas.has(r.aula_id))) return false
     if (opts.colegio && r.colegio_id !== opts.colegio) return false
     if (opts.aula && r.aula_id !== opts.aula) return false
     if (search && !`${r.alumno_nombre} ${r.alumno_codigo ?? ''}`.toLowerCase().includes(search)) return false
@@ -160,12 +164,13 @@ export async function buildAlumnos(opts: {
   // traer el detalle alumno×periodo solo para dibujar la línea costaba segundos.
   // Los agregados respetan los filtros de colegio/aula; `search` no los altera a
   // propósito — buscar un nombre no debe redibujar el panorama del grupo.
-  const agregados = await todas<AgregadoRow>('vw_periodo_aula_resumen', '*', (q: any) => {
+  let agregados = await todas<AgregadoRow>('vw_periodo_aula_resumen', '*', (q: any) => {
     let r = q
     if (opts.colegio) r = r.eq('colegio_id', opts.colegio)
     if (opts.aula) r = r.eq('aula_id', opts.aula)
     return r
   })
+  if (permitidas) agregados = agregados.filter((a) => a.aula_id && permitidas.has(a.aula_id))
 
   type Acc = { alumnos: number; suma: number; c: number; b: number; l: number }
   const nuevoAcc = (): Acc => ({ alumnos: 0, suma: 0, c: 0, b: 0, l: 0 })
@@ -308,12 +313,15 @@ export async function buildAlumnoDetalle(alumnoId: string) {
   })
 
   const nivelActual = nivelDe(r.promedio_actual)
+  const nivelDiagnostico = nivelDe(r.promedio_diagnostico)
   return {
     buckets: BUCKETS,
     alumno: {
       ...r,
       nivel_actual: nivelActual,
       nivel_actual_nombre: nivelActual ? NIVEL_NOMBRE[nivelActual] : null,
+      nivel_diagnostico: nivelDiagnostico,
+      nivel_diagnostico_nombre: nivelDiagnostico ? NIVEL_NOMBRE[nivelDiagnostico] : null,
       delta: r.promedio_actual != null && r.promedio_diagnostico != null
         ? round2(r.promedio_actual - r.promedio_diagnostico) : null,
     },
@@ -333,4 +341,31 @@ export async function buildAlumnoDetalle(alumnoId: string) {
       })),
     competencias,
   }
+}
+
+// ── Alcance del docente ──────────────────────────────────────────────────────
+/** Aulas en las que el docente tiene dictado (su alcance para ver alumnos). */
+export async function aulasDelDocente(profesorId: string): Promise<string[]> {
+  const { data, error } = await db.from('dictados').select('aula_id').eq('profesor_id', profesorId)
+  if (error) throw new Error(`dictados: ${error.message}`)
+  return [...new Set((data ?? []).map((d: any) => d.aula_id).filter(Boolean))] as string[]
+}
+
+/** ¿Puede este usuario ver la ficha del alumno? UGEL todo; director su colegio;
+ *  docente solo los alumnos de las aulas donde dicta. */
+export async function puedeVerAlumno(
+  perfil: { id: string; role: string; colegio_id: string | null },
+  alumnoId: string,
+): Promise<boolean> {
+  if (perfil.role === 'ugel') return true
+  const { data: alumno } = await db.from('alumnos').select('colegio_id').eq('id', alumnoId).maybeSingle()
+  if (!alumno) return false
+  if (perfil.role === 'director') return !!perfil.colegio_id && alumno.colegio_id === perfil.colegio_id
+  if (perfil.role !== 'profesor') return false
+
+  const aulas = await aulasDelDocente(perfil.id)
+  if (!aulas.length) return false
+  const { data: matriculas } = await db
+    .from('matriculas').select('aula_id').eq('alumno_id', alumnoId).in('aula_id', aulas)
+  return !!matriculas?.length
 }

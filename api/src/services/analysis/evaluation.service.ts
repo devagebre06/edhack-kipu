@@ -19,6 +19,29 @@ export interface EvaluationContext {
   previous?: string
 }
 
+/** El system prompt con la rúbrica completa (se expone en «Cómo se evalúa»). */
+export const systemPromptFicha = () => fichaPrompt
+
+/** Mensaje de usuario del paso 2: contexto + extracción + documento + instrucciones. */
+export const promptEvaluacion = (ctx: EvaluationContext, extraccion: string, documento: string) =>
+  `CONTEXTO DE LA ENTREGA: tipo ${ctx.type}, curso "${ctx.subject}", grado ${ctx.grade}.
+
+RESULTADO DE LA EXTRACCIÓN PREVIA (documentos presentes y datos de identificación ya verificados; úsalo para decidir "No evidenciado" y "No aplica"):
+${extraccion}
+
+${ctx.previous ? `EVALUACIÓN ANTERIOR (esta entrega es una corrección: compara y reconoce explícitamente las mejoras): ${ctx.previous}\n` : ''}
+DOCUMENTO DEL DOCENTE (Markdown extraído):
+${documento}
+
+Aplica tu flujo de trabajo interno y responde SOLO el JSON pedido:
+- items: los 17 ítems de la Sección II en orden (numero 1 a 17). IMPORTANTE: los ítems 1, 2, 3, 4, 5 y 11 están EXCLUIDOS de la evaluación actual; devuélvelos igual (para conservar los 17) con valoracion NO_APLICA, evidencia "Ítem excluido de la evaluación" y recomendacion "". Para los demás ítems: valoracion LOGRADO/PROCESO/INICIO según la rúbrica; NO_EVIDENCIADO si el documento requerido no está presente. evidencia: cita textual o referencia de sección del documento ("No evidenciado en el documento" si falta). recomendacion: breve y accionable.
+- desempenos: los 5 desempeños de la Sección III en orden (numero 1 a 5), valorando SOLO el diseño de la sesión. evidencia_diseno: qué prevé (o no) la sesión.
+- resumen: 3-5 frases formativas dirigidas al docente (fortalezas, dificultades y siguiente paso), recordando que la valoración de la Sección III requiere observación de aula.
+- fortalezas y oportunidades: listas específicas.
+- recomendaciones_priorizadas: máximo 5, accionables, en orden de prioridad.
+- compromisos_docente y compromisos_especialista: 2-3 compromisos sugeridos cada uno.
+- confidence: 0-1, tu certeza global (baja si el texto extraído está incompleto o ambiguo).`
+
 export async function evaluate(markdown: string, ctx: EvaluationContext) {
   const extraction = await extract(markdown)
   if (!extraction.legible) {
@@ -31,23 +54,7 @@ export async function evaluate(markdown: string, ctx: EvaluationContext) {
 
   const parsed = FichaSchema.parse(await gemini({
     systemInstruction: { parts: [{ text: fichaPrompt }] },
-    contents: [{ parts: [{ text: `CONTEXTO DE LA ENTREGA: tipo ${ctx.type}, curso "${ctx.subject}", grado ${ctx.grade}.
-
-RESULTADO DE LA EXTRACCIÓN PREVIA (documentos presentes y datos de identificación ya verificados; úsalo para decidir "No evidenciado" y "No aplica"):
-${JSON.stringify(extraction)}
-
-${ctx.previous ? `EVALUACIÓN ANTERIOR (esta entrega es una corrección: compara y reconoce explícitamente las mejoras): ${ctx.previous}\n` : ''}
-DOCUMENTO DEL DOCENTE (Markdown extraído):
-${markdown.slice(0, 60000)}
-
-Aplica tu flujo de trabajo interno y responde SOLO el JSON pedido:
-- items: los 17 ítems de la Sección II en orden (numero 1 a 17). IMPORTANTE: los ítems 1, 2, 3, 4, 5 y 11 están EXCLUIDOS de la evaluación actual; devuélvelos igual (para conservar los 17) con valoracion NO_APLICA, evidencia "Ítem excluido de la evaluación" y recomendacion "". Para los demás ítems: valoracion LOGRADO/PROCESO/INICIO según la rúbrica; NO_EVIDENCIADO si el documento requerido no está presente. evidencia: cita textual o referencia de sección del documento ("No evidenciado en el documento" si falta). recomendacion: breve y accionable.
-- desempenos: los 5 desempeños de la Sección III en orden (numero 1 a 5), valorando SOLO el diseño de la sesión. evidencia_diseno: qué prevé (o no) la sesión.
-- resumen: 3-5 frases formativas dirigidas al docente (fortalezas, dificultades y siguiente paso), recordando que la valoración de la Sección III requiere observación de aula.
-- fortalezas y oportunidades: listas específicas.
-- recomendaciones_priorizadas: máximo 5, accionables, en orden de prioridad.
-- compromisos_docente y compromisos_especialista: 2-3 compromisos sugeridos cada uno.
-- confidence: 0-1, tu certeza global (baja si el texto extraído está incompleto o ambiguo).` }] }],
+    contents: [{ parts: [{ text: promptEvaluacion(ctx, JSON.stringify(extraction), markdown.slice(0, 60000)) }] }],
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: {

@@ -11,8 +11,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { supabase } from './supabase'
-import { postForm, getJson, postJson, patchJson, delJson } from './http'
-import type { Alert, AlertaFila, AlertasResponse, AlumnoDetalle, AlumnosResponse, Artifact, AulaResumen, EvaluacionAlertas, NuevaAlerta, ClassSchedule, Dictado, Horario, ProfesorDetalle, HorariosPanel, Institution, MapaResponse, NewHorario, NewUsuario, ProfesoresResponse, Profile, UploadResult, UsuarioRow, UsuariosPanel } from '@/types'
+import { postForm, getJson, postJson, patchJson, putJson, delJson } from './http'
+import type { Alert, AlertaFila, AlertasResponse, AlumnoDetalle, AlumnosResponse, Artifact, AulaResumen, EvaluacionAlertas, NuevaAlerta, ClassSchedule, Dictado, Horario, ProfesorDetalle, HorariosPanel, Institution, MapaResponse, NewHorario, NewUsuario, CompetenciasResponse, ConfigEvaluacion, ProfesoresResponse, Profile, RegistroNotas, ResultadoRegistro, UploadResult, UsuarioRow, UsuariosPanel } from '@/types'
 
 // ─────────────────────────────────────────────────────────────
 // LLM — motor de evaluación (backend /api/v1)
@@ -304,5 +304,51 @@ export const alertas = {
   },
 }
 
-export const api = { llm, db, map, horarios, usuarios, files, alertas }
+// ─────────────────────────────────────────────────────────────
+// NOTAS — registro del docente (backend /api/v1/notas)
+// ─────────────────────────────────────────────────────────────
+export const notas = {
+  /** Nómina del aula, competencias del curso y lo ya registrado en ese periodo. */
+  registro(dictadoId: string, periodoId?: string) {
+    const params = new URLSearchParams({ dictado_id: dictadoId })
+    if (periodoId) params.set('periodo_id', periodoId)
+    return getJson<RegistroNotas>(`/api/v1/notas/registro?${params}`)
+  },
+  /** Guarda o corrige el registro completo de un dictado × periodo. */
+  guardar(payload: { dictado_id: string; periodo_id: string; filas: { alumno_id: string; notas: Record<string, string> }[] }) {
+    return postJson<ResultadoRegistro>('/api/v1/notas/registro', payload)
+  },
+}
+
+// ─────────────────────────────────────────────────────────────
+// DOCENTE — lo que ve el profesor de sus propios alumnos
+// ─────────────────────────────────────────────────────────────
+export const docente = {
+  /** Competencias de sus dictados: desempeño del grupo + su propio seguimiento. */
+  competencias() {
+    return getJson<CompetenciasResponse>('/api/v1/competencias')
+  },
+  /** Guarda el estado de trabajo y/o el plan de una competencia. */
+  guardarCompetencia(payload: { dictado_id: string; competencia: string; estado?: string; nota?: string }) {
+    return putJson<{ ok: true }>('/api/v1/competencias', payload)
+  },
+  /** Alumnos de las aulas donde dicta, con la misma forma que el listado UGEL. */
+  misAlumnos(opts: { search?: string; aula?: string; limit?: number; offset?: number } = {}) {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(opts)) if (v !== undefined && v !== '') params.set(k, String(v))
+    const qs = params.toString()
+    return getJson<AlumnosResponse>(`/api/v1/alumnos/mis${qs ? `?${qs}` : ''}`)
+  },
+}
+
+// ─────────────────────────────────────────────────────────────
+// EVALUACIÓN — cómo funciona el motor (documentación viva)
+// ─────────────────────────────────────────────────────────────
+export const evaluacion = {
+  config() {
+    return getJson<ConfigEvaluacion>('/api/v1/evaluacion')
+  },
+}
+
+export const api = { llm, db, map, horarios, usuarios, files, alertas, notas, docente, evaluacion }
 export default api

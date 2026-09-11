@@ -12,6 +12,10 @@ import TeacherCalendar from '@/pages/teacher/TeacherCalendar'
 import TeacherUpload from '@/pages/teacher/TeacherUpload'
 import TeacherArtifacts from '@/pages/teacher/TeacherArtifacts'
 import TeacherUnits from '@/pages/teacher/TeacherUnits'
+import TeacherNotas from '@/pages/teacher/TeacherNotas'
+import TeacherAlumnos from '@/pages/teacher/TeacherAlumnos'
+import TeacherAlumnoDetalle from '@/pages/teacher/TeacherAlumnoDetalle'
+import TeacherCompetencias from '@/pages/teacher/TeacherCompetencias'
 import DirectorPanel from '@/pages/director/DirectorPanel'
 import DirectorArtifacts from '@/pages/director/DirectorArtifacts'
 import DirectorAlerts from '@/pages/director/DirectorAlerts'
@@ -27,6 +31,7 @@ import UgelAlumnoDetalle from '@/pages/ugel/UgelAlumnoDetalle'
 import UgelAlertas from '@/pages/ugel/UgelAlertas'
 import UgelEvidencias from '@/pages/ugel/UgelEvidencias'
 import Glosario from '@/pages/Glosario'
+import ComoSeEvalua from '@/pages/ComoSeEvalua'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } })
 
@@ -63,6 +68,10 @@ function AppInner() {
               <Route path="/profesor/subir" element={guard(role, 'teacher', <TeacherUpload />)} />
               <Route path="/profesor/entregas" element={guard(role, 'teacher', <TeacherArtifacts />)} />
               <Route path="/profesor/unidades" element={guard(role, 'teacher', <TeacherUnits />)} />
+              <Route path="/profesor/notas" element={guard(role, 'teacher', <TeacherNotas />)} />
+              <Route path="/profesor/competencias" element={guard(role, 'teacher', <TeacherCompetencias />)} />
+              <Route path="/profesor/alumnos" element={guard(role, 'teacher', <TeacherAlumnos />)} />
+              <Route path="/profesor/alumnos/:id" element={guard(role, 'teacher', <TeacherAlumnoDetalle />)} />
               {/* Director */}
               <Route path="/director" element={guard(role, 'director', <DirectorPanel />)} />
               <Route path="/director/entregas" element={guard(role, 'director', <DirectorArtifacts />)} />
@@ -79,8 +88,12 @@ function AppInner() {
               <Route path="/ugel/evidencias" element={guard(role, 'ugel', <UgelEvidencias />)} />
               <Route path="/ugel/alertas" element={guard(role, 'ugel', <UgelAlertas />)} />
               <Route path="/ugel/usuarios" element={guard(role, 'ugel', <UgelUsuarios />)} />
-              {/* Transversal: mismo diccionario para los tres roles. */}
-              <Route path="/glosario" element={<Glosario />} />
+              <Route path="/glosario" element={guard(role, 'ugel', <Glosario />)} />
+              {/* Documenta el método de evaluación: la consultan docente y UGEL. */}
+              <Route
+                path="/como-se-evalua"
+                element={role === 'teacher' || role === 'ugel' ? <ComoSeEvalua /> : <Navigate to={HOME[role]} />}
+              />
               <Route path="*" element={<Navigate to={HOME[role]} />} />
             </Routes>
           </Shell>
