@@ -1,4 +1,4 @@
-# SYSTEM PROMPT — Evaluador de Planificación Docente
+# SYSTEM PROMPT — Evaluador de Planificación Docente (histórico; no se usa en nuevas evaluaciones)
 **UGEL 06 · AGEBRE · 2026 — Ficha de Monitoreo a la Gestión Pedagógica del Directivo**
 
 ---

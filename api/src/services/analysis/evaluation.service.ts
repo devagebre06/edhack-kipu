@@ -1,14 +1,12 @@
-// Paso 2 del análisis del PDF: evaluación del documento contra la ficha de monitoreo UGEL 06.
-// Orquesta la extracción previa, la valoración con Gemini y el cálculo de puntajes en el servidor.
+// Evaluación documental de unidades y sesiones. Gemini valora; el servidor calcula.
 import { readFile } from 'node:fs/promises'
 import { RUBRIC_VERSION } from '../../config/env.ts'
 import { gemini } from './gemini.client.ts'
 import { extract } from './extraction.service.ts'
-import { ITEMS, DESEMPENOS, VAL, PUNTAJE, FichaSchema, EXCLUDED_ITEMS } from './rubric.ts'
+import { CRITERIOS, EvaluacionSchema, PUNTAJE_MAX, calcularNota } from './rubric.ts'
 
-// System prompt con la rúbrica completa (cargado una sola vez al iniciar).
-const fichaPrompt = await readFile(
-  new URL('../../../config/prompts/ficha-monitoreo-ugel06.v1.md', import.meta.url),
+const rubricaPrompt = await readFile(
+  new URL('../../../config/prompts/planificacion-4primaria.v1.md', import.meta.url),
   'utf8',
 )
 
@@ -17,30 +15,29 @@ export interface EvaluationContext {
   subject: string
   grade: string
   previous?: string
+  unitContext?: string
 }
 
-/** El system prompt con la rúbrica completa (se expone en «Cómo se evalúa»). */
-export const systemPromptFicha = () => fichaPrompt
+/** Instrucción exacta que recibe el modelo y se expone en «Cómo se evalúa». */
+export const systemPromptRubrica = () => rubricaPrompt
 
-/** Mensaje de usuario del paso 2: contexto + extracción + documento + instrucciones. */
 export const promptEvaluacion = (ctx: EvaluationContext, extraccion: string, documento: string) =>
   `CONTEXTO DE LA ENTREGA: tipo ${ctx.type}, curso "${ctx.subject}", grado ${ctx.grade}.
 
-RESULTADO DE LA EXTRACCIÓN PREVIA (documentos presentes y datos de identificación ya verificados; úsalo para decidir "No evidenciado" y "No aplica"):
+EXTRACCIÓN PREVIA (datos detectados; contrástalos con el documento, no los tomes como prueba de calidad):
 ${extraccion}
 
-${ctx.previous ? `EVALUACIÓN ANTERIOR (esta entrega es una corrección: compara y reconoce explícitamente las mejoras): ${ctx.previous}\n` : ''}
-DOCUMENTO DEL DOCENTE (Markdown extraído):
+${ctx.unitContext ? `CONTEXTO DE LA UNIDAD VINCULADA (solo para valorar la coherencia de esta sesión dentro del criterio 3; no es un veto independiente):\n${ctx.unitContext}\n` : ''}
+${ctx.previous ? `EVALUACIÓN ANTERIOR (esta entrega es una corrección; reconoce las mejoras visibles sin repetir la nota anterior):\n${ctx.previous}\n` : ''}
+DOCUMENTO DEL DOCENTE (texto extraído):
 ${documento}
 
-Aplica tu flujo de trabajo interno y responde SOLO el JSON pedido:
-- items: los 17 ítems de la Sección II en orden (numero 1 a 17). IMPORTANTE: los ítems 1, 2, 3, 4, 5 y 11 están EXCLUIDOS de la evaluación actual; devuélvelos igual (para conservar los 17) con valoracion NO_APLICA, evidencia "Ítem excluido de la evaluación" y recomendacion "". Para los demás ítems: valoracion LOGRADO/PROCESO/INICIO según la rúbrica; NO_EVIDENCIADO si el documento requerido no está presente. evidencia: cita textual o referencia de sección del documento ("No evidenciado en el documento" si falta). recomendacion: breve y accionable.
-- desempenos: los 5 desempeños de la Sección III en orden (numero 1 a 5), valorando SOLO el diseño de la sesión. evidencia_diseno: qué prevé (o no) la sesión.
-- resumen: 3-5 frases formativas dirigidas al docente (fortalezas, dificultades y siguiente paso), recordando que la valoración de la Sección III requiere observación de aula.
-- fortalezas y oportunidades: listas específicas.
-- recomendaciones_priorizadas: máximo 5, accionables, en orden de prioridad.
-- compromisos_docente y compromisos_especialista: 2-3 compromisos sugeridos cada uno.
-- confidence: 0-1, tu certeza global (baja si el texto extraído está incompleto o ambiguo).`
+Responde SOLO el JSON pedido:
+- items: exactamente los ocho criterios, números 1 a 8, una vez cada uno. Para cada uno devuelve puntaje entero 0, 1, 2 o 3; evidencia localizable del documento o «No evidenciado en el documento»; recomendacion breve y concreta.
+- resumen: 2-4 frases formativas sobre la calidad de esta planificación, nunca sobre la ejecución real en aula.
+- fortalezas y oportunidades: listas específicas sustentadas en el archivo.
+- recomendaciones_priorizadas: hasta cinco mejoras accionables, de mayor a menor impacto.
+- confidence: número entre 0 y 1 que expresa la certeza del análisis, sin cambiar la nota.`
 
 export async function evaluate(markdown: string, ctx: EvaluationContext) {
   const extraction = await extract(markdown)
@@ -48,12 +45,13 @@ export async function evaluate(markdown: string, ctx: EvaluationContext) {
     return {
       decision: 'MANUAL_REVIEW' as const, overall_score: 0, confidence: 0,
       summary: `El documento no pudo leerse con claridad (${extraction.observaciones}). Un especialista lo revisará.`,
-      strengths: [] as string[], improvements: [] as string[], criteria: { extraccion: extraction } as object, criticalFlags: ['ILLEGIBLE_DOCUMENT'],
+      strengths: [] as string[], improvements: [] as string[], criteria: { extraccion: extraction } as object,
+      criticalFlags: ['ILLEGIBLE_DOCUMENT'],
     }
   }
 
-  const parsed = FichaSchema.parse(await gemini({
-    systemInstruction: { parts: [{ text: fichaPrompt }] },
+  const parsed = EvaluacionSchema.parse(await gemini({
+    systemInstruction: { parts: [{ text: rubricaPrompt }] },
     contents: [{ parts: [{ text: promptEvaluacion(ctx, JSON.stringify(extraction), markdown.slice(0, 60000)) }] }],
     generationConfig: {
       responseMimeType: 'application/json',
@@ -64,65 +62,40 @@ export async function evaluate(markdown: string, ctx: EvaluationContext) {
           fortalezas: { type: 'ARRAY', items: { type: 'STRING' } },
           oportunidades: { type: 'ARRAY', items: { type: 'STRING' } },
           items: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
-            numero: { type: 'INTEGER' }, valoracion: { type: 'STRING', enum: [...VAL] },
+            numero: { type: 'INTEGER' }, puntaje: { type: 'INTEGER' },
             evidencia: { type: 'STRING' }, recomendacion: { type: 'STRING' },
-          }, required: ['numero', 'valoracion', 'evidencia', 'recomendacion'] } },
-          desempenos: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
-            numero: { type: 'INTEGER' }, valoracion: { type: 'STRING', enum: VAL.filter(v => v !== 'NO_APLICA') },
-            evidencia_diseno: { type: 'STRING' }, recomendacion: { type: 'STRING' },
-          }, required: ['numero', 'valoracion', 'evidencia_diseno', 'recomendacion'] } },
+          }, required: ['numero', 'puntaje', 'evidencia', 'recomendacion'] } },
           recomendaciones_priorizadas: { type: 'ARRAY', items: { type: 'STRING' } },
-          compromisos_docente: { type: 'ARRAY', items: { type: 'STRING' } },
-          compromisos_especialista: { type: 'ARRAY', items: { type: 'STRING' } },
         },
-        required: ['confidence', 'resumen', 'fortalezas', 'oportunidades', 'items', 'desempenos', 'recomendaciones_priorizadas', 'compromisos_docente', 'compromisos_especialista'],
+        required: ['confidence', 'resumen', 'fortalezas', 'oportunidades', 'items', 'recomendaciones_priorizadas'],
       },
     },
   }))
 
-  // Puntajes calculados en el servidor: no se confía en la aritmética del modelo.
-  // Los ítems excluidos se fuerzan a NO_APLICA aquí (defensivo), sin importar lo que devuelva el modelo:
-  // así nunca puntúan ni generan flags, aunque el modelo ignore la instrucción del prompt.
   const items = parsed.items
     .sort((a, b) => a.numero - b.numero)
-    .map((it, i) => {
-      const excluido = EXCLUDED_ITEMS.has(it.numero)
-      const valoracion = excluido ? 'NO_APLICA' as const : it.valoracion
-      return {
-        ...it, valoracion,
-        evidencia: excluido ? 'Ítem excluido de la evaluación' : it.evidencia,
-        recomendacion: excluido ? '' : it.recomendacion,
-        dimension: ITEMS[i][0], nombre: ITEMS[i][1], puntaje: PUNTAJE[valoracion], excluido,
-      }
-    })
-  const aplicables = items.filter(it => it.puntaje !== null)
-  const puntaje_total = aplicables.reduce((s, it) => s + it.puntaje!, 0)
-  const puntaje_max = aplicables.length * 3
-  const promedio = puntaje_max ? puntaje_total / (aplicables.length) : 0
-  const nivel_global = promedio >= 2.34 ? 'LOGRADO' : promedio >= 1.67 ? 'PROCESO' : 'INICIO'
-  const desempenos = parsed.desempenos
-    .sort((a, b) => a.numero - b.numero)
-    .map((d, i) => ({ ...d, nombre: DESEMPENOS[i] }))
-
-  const decision = parsed.confidence < 0.75 ? 'MANUAL_REVIEW' as const
-    : nivel_global === 'LOGRADO' ? 'APPROVED' as const : 'NEEDS_REVISION' as const
-
-  const ficha = {
-    version: RUBRIC_VERSION,
-    extraccion: extraction,
-    items, desempenos,
-    puntaje_total, puntaje_max, promedio: Math.round(promedio * 100) / 100, nivel_global,
-    recomendaciones_priorizadas: parsed.recomendaciones_priorizadas,
-    compromisos_docente: parsed.compromisos_docente,
-    compromisos_especialista: parsed.compromisos_especialista,
-  }
+    .map(item => ({
+      ...item,
+      nombre: CRITERIOS[item.numero - 1].nombre,
+      fuente: CRITERIOS[item.numero - 1].fuente,
+      nivel: ['Sin evidencia', 'Inicio', 'En proceso', 'Logrado'][item.puntaje],
+    }))
+  const { puntos: puntaje_total, nota: overall_score, satisfactoria } = calcularNota(items)
 
   return {
-    decision, confidence: parsed.confidence, summary: parsed.resumen,
-    overall_score: puntaje_max ? Math.round((puntaje_total / puntaje_max) * 100) : 0,
+    decision: satisfactoria ? 'APPROVED' as const : 'NEEDS_REVISION' as const,
+    overall_score, confidence: parsed.confidence, summary: parsed.resumen,
     strengths: parsed.fortalezas, improvements: parsed.oportunidades,
-    criteria: ficha as object,
-    criticalFlags: items.filter(it => it.valoracion === 'NO_EVIDENCIADO').map(it => `NO_EVIDENCIADO_ITEM_${it.numero}`),
+    criteria: {
+      version: RUBRIC_VERSION,
+      tipo: ctx.type,
+      extraccion: extraction,
+      items,
+      puntaje_total,
+      puntaje_max: PUNTAJE_MAX,
+      recomendaciones_priorizadas: parsed.recomendaciones_priorizadas,
+    },
+    criticalFlags: [] as string[],
   }
 }
 

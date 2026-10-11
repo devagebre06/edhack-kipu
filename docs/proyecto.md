@@ -51,7 +51,7 @@ metáfora del quipu, y datos agregados por defecto para UGEL.
 - **API** (`api/`): Express 5 + TypeScript ejecutado con `tsx` (sin build), `zod`
   para validar la salida de la IA, `multer` para uploads en memoria.
 - **Datos/Auth/Storage**: Supabase (Postgres + Auth + Storage, bucket privado `evidence`).
-- **IA**: Google Gemini (`gemini-2.5-flash`) vía REST con `responseSchema` JSON.
+- **IA**: Google Gemini (`gemini-3.7-flash`) vía REST con `responseSchema` JSON.
 - **Conversión de documentos**: `markitdown` (subproceso Python), PDF/PPTX/XLSX → Markdown.
 
 ### Despliegue
@@ -68,19 +68,19 @@ Flujo síncrono (sin cola ni worker) en [artifact.service.ts](../api/src/service
 
 ```
 multer → Supabase Storage → markitdown (Python) → Gemini (responseSchema + Zod)
-       → umbral de decisión → contexto + coherencia → auditoría
+       → ocho criterios (0–3) → nota y decisión → contexto → auditoría
 ```
 
-- El documento **siempre queda subido**; la **validez** se decide después:
-  puntaje ≥ `VALID_SCORE_MIN` (60 por defecto) y —para sesiones— **coherencia con
-  su unidad de aprendizaje**.
+- El documento **siempre queda subido**. Una evaluación completada cuenta como
+  satisfactoria y válida desde **18/24 puntos = 75/100**. Para sesiones, la
+  relación con su unidad se valora dentro del criterio de coherencia.
 - Documento ilegible o vacío (< 50 chars de Markdown) → estado `MANUAL_REVIEW`,
   nunca se pierde.
 - Latencia típica ~30 s. Es un flujo por request: simple de operar y depurar,
   pero sin reintentos ni backpressure.
 
 Config del dominio de IA versionada y persistida en cada evaluación:
-`PROMPT_VERSION` (`v2`) y `RUBRIC_VERSION` (`ficha-monitoreo-ugel06.v1`), en
+`PROMPT_VERSION` (`v3`) y `RUBRIC_VERSION` (`planificacion-4primaria.v1`), en
 [env.ts](../api/src/config/env.ts).
 
 ## 5. Modelo de datos

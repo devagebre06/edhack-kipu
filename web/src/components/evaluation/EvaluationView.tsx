@@ -1,6 +1,6 @@
-import type { Evaluation, Ficha } from '@/types'
+import type { Evaluation, Ficha, RubricaKipu } from '@/types'
 import { STATUS_LABEL, DIMENSION_LABEL, VAL_LABEL, VAL_BADGE, ID_LABEL, DOC_LABEL } from '@/config/labels'
-import { getFicha, getLegacyCriteria, scoreDelta, fichaItemsByDimension } from '@/factories'
+import { getFicha, getRubricaKipu, getLegacyCriteria, scoreDelta, fichaItemsByDimension } from '@/factories'
 import { Badge } from '../Badge'
 
 function ItemDetail({ nombre, valoracion, evidencia, recomendacion }: { nombre: string; valoracion: string; evidencia: string; recomendacion: string }) {
@@ -82,14 +82,48 @@ function FichaView({ ficha }: { ficha: Ficha }) {
   )
 }
 
+function RubricaKipuView({ rubrica }: { rubrica: RubricaKipu }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h4 className="text-sm font-semibold">Rúbrica de planificación · ocho criterios</h4>
+        <span className="text-sm tabular-nums text-ink-soft">{rubrica.puntaje_total}/{rubrica.puntaje_max} puntos</span>
+      </div>
+      <div className="space-y-2">
+        {rubrica.items.map(item => (
+          <details key={item.numero} className="rounded-md border border-line bg-bg px-4 py-2.5 open:bg-surface">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm">
+              <span className="font-medium">{item.numero}. {item.nombre}</span>
+              <span className="shrink-0 tabular-nums text-ink-soft">{item.puntaje}/3 · {item.nivel}</span>
+            </summary>
+            <p className="mt-2 text-xs text-ink-soft">Referencia: {item.fuente}</p>
+            {item.evidencia && <blockquote className="mt-2 border-l border-line pl-3 text-sm italic text-ink-soft">{item.evidencia}</blockquote>}
+            {item.recomendacion && <p className="mt-2 text-sm"><span className="font-medium">Para mejorar:</span> {item.recomendacion}</p>}
+          </details>
+        ))}
+      </div>
+      {rubrica.recomendaciones_priorizadas.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold">Mejoras prioritarias</h4>
+          <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm">
+            {rubrica.recomendaciones_priorizadas.map((r, i) => <li key={i}>{r}</li>)}
+          </ol>
+        </div>
+      )}
+      <p className="text-xs text-ink-soft">La nota valora la planificación escrita. La práctica en aula requiere observación.</p>
+    </div>
+  )
+}
+
 export function EvaluationView({ ev, prev }: { ev: Evaluation; prev?: Evaluation }) {
   const ficha = getFicha(ev)
+  const rubrica = getRubricaKipu(ev)
   const legacy = getLegacyCriteria(ev)
   const delta = scoreDelta(ev, prev)
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-4">
-        <div className="text-4xl font-semibold">{ev.overall_score}<span className="text-lg text-ink-soft">/100</span></div>
+        <div className="text-4xl font-semibold">{ev.decision === 'MANUAL_REVIEW' ? 'Sin calificar' : <>{ev.overall_score}<span className="text-lg text-ink-soft">/100</span></>}</div>
         <Badge value={ev.decision} label={STATUS_LABEL[ev.decision]} />
         {delta !== null && <span className={`text-sm font-medium ${delta >= 0 ? 'text-ok' : 'text-warn'}`}>
           {delta >= 0 ? '▲' : '▼'} {Math.abs(delta)} pts vs. versión anterior
@@ -109,6 +143,7 @@ export function EvaluationView({ ev, prev }: { ev: Evaluation; prev?: Evaluation
         </div>
       </div>
       {ficha && <FichaView ficha={ficha} />}
+      {rubrica && <RubricaKipuView rubrica={rubrica} />}
       {legacy.length > 0 && (
         <div>
           <h4 className="mb-2 text-sm font-semibold">Resultado por criterio</h4>

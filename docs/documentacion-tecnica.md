@@ -48,7 +48,7 @@ salen del backend.
 | Web | Vite 8 · React 19 · TypeScript · Tailwind v4 · React Router 7 · TanStack Query 5 · supabase-js · Recharts · react-leaflet · `xlsx` |
 | API | Node + Express 5 · TypeScript (ejecutado con `tsx`, sin build) · `zod` · `multer` · `@supabase/supabase-js` |
 | Datos | Supabase: Postgres + Auth (JWT) + Storage (bucket privado `evidence`) |
-| IA | Google Gemini `gemini-2.5-flash` vía REST (`generateContent` + `responseSchema`) |
+| IA | Google Gemini `gemini-3.7-flash` vía REST (`generateContent` + `responseSchema`) |
 | Conversión | `markitdown` (CLI Python) PDF/PPTX/XLSX → Markdown |
 
 ## 2. Modelo de dominio
@@ -230,24 +230,21 @@ por request**, sin cola ni worker:
    └─ si legible:
         evaluation = evaluate(markdown, {type, subject, grade, previous})
    (error de conversión/eval → version+artifact = PROCESSING_ERROR, throw)
-5. isValid = legible && score >= VALID_SCORE_MIN   (default 60)
-6. si legible: context = summarizeContext(markdown, {...})
-   └─ si DAILY_SESSION con unit_id:
-        uctx = contexto guardado de la unidad
-        coh = checkSessionCoherence(context, uctx)
-        si !coh.coherent → isValid=false, invalid_reason = coh.reason
+5. si es sesión: se pasa el contexto de su unidad al evaluador
+6. isValid = legible && decision == APPROVED && score >= 75
+7. si legible: context = summarizeContext(markdown, {...})
    (fallo aquí es best-effort: se loguea, NO tumba la subida)
-7. update artifact_versions {status, markdown, is_valid, invalid_reason}
+8. update artifact_versions {status, markdown, is_valid, invalid_reason}
    update artifacts {status, current_version, updated_at}
    insert evaluations {model_name, prompt_version, rubric_version, ...}
    upsert artifact_contexts {artifact_id, context}
    audit('ARTIFACT_EVALUATED')
-8. return { artifact_id, version, status, is_valid, invalid_reason, evaluation }
+9. return { artifact_id, version, status, is_valid, invalid_reason, evaluation }
 ```
 
 Puntos importantes:
 - **El archivo nunca se pierde**: incluso ilegible o con error de análisis de contexto, la versión queda registrada y el documento en Storage.
-- **Validez en dos ejes**: puntaje ≥ `VALID_SCORE_MIN` **y** (para sesiones) coherencia semántica con la unidad. Una evidencia inválida se sube pero no cuenta en agregados.
+- **Una sola regla de validez**: una evaluación legible con al menos 18/24 puntos (75/100). La coherencia de una sesión con su unidad integra el criterio 3 de la rúbrica; no funciona como veto independiente.
 - **Reenvío**: `createArtifactVersion` incrementa la versión y pasa el resumen/mejoras/score de la evaluación anterior al prompt, para que la IA compare progreso.
 
 ## 7. Capa de IA (Gemini)
@@ -269,38 +266,37 @@ competencia…) + flag `legible`. Markdown truncado a 60k chars. Schema validado
 con Zod (`ExtractionSchema`).
 
 ### 7.2 Evaluación (`evaluate`)
-El corazón. System prompt cargado de
-`api/config/prompts/ficha-monitoreo-ugel06.v1.md` (`PROMPT_VERSION = v2`,
-`RUBRIC_VERSION = ficha-monitoreo-ugel06.v1`). Evalúa contra la **Ficha de
-Monitoreo UGEL 06**:
+El system prompt vigente es `api/config/prompts/planificacion-4primaria.v1.md`
+(`PROMPT_VERSION = v3`, `RUBRIC_VERSION = planificacion-4primaria.v1`).
+La **rúbrica propia de Kipu** tiene ocho criterios generales basados en el CNEB,
+el Programa Curricular de Educación Primaria y los elementos generales del Oficio
+Múltiple N.º 00038-2026 de la UGEL 06. Sirve solo para unidades y sesiones de
+4.º de primaria en Comunicación y Matemática. El ítem específico de prevención
+ante emergencias/desastres no se puntúa.
 
-- **Sección II** — 17 ítems de planificación en 4 dimensiones (A insumos, B planificación anual, C unidad, D sesión). Ítems `{1,2,3,4,5,11}` están **excluidos** (se fuerzan a `NO_APLICA`, sin puntaje).
-- **Sección III** — 5 desempeños del Marco del Buen Desempeño Docente (evaluados sobre el *diseño*, no sobre observación de aula).
-
-Cada ítem/desempeño recibe una valoración `LOGRADO | PROCESO | INICIO |
-NO_APLICA | NO_EVIDENCIADO` con **evidencia citada** y recomendación. El
-**puntaje se calcula en el servidor**, no lo decide el modelo:
+Gemini asigna de 0 a 3 puntos a cada criterio con evidencia y recomendación. Un
+criterio sin evidencia recibe 0 y sigue en el denominador. El servidor valida
+que aparezcan los ocho criterios exactamente una vez y calcula:
 
 ```
-PUNTAJE = { LOGRADO:3, PROCESO:2, INICIO:1, NO_EVIDENCIADO:null, NO_APLICA:null }
-promedio      = suma(puntajes aplicables) / nº aplicables
-nivel_global  = promedio >= 2.34 → LOGRADO ; >= 1.67 → PROCESO ; else INICIO
-overall_score = puntaje_total / puntaje_max * 100         (0–100)
-decision      = confidence < 0.75 → MANUAL_REVIEW
-                nivel_global == LOGRADO → APPROVED
-                else → NEEDS_REVISION
+puntaje_total = suma(ocho puntajes)              (0–24)
+overall_score = redondear(puntaje_total / 24 × 100)
+decision      = puntaje_total >= 18 → APPROVED ; else NEEDS_REVISION
 ```
+
+La confianza queda registrada como dato informativo; no cambia la decisión de
+una evaluación completada. Un documento ilegible queda en `MANUAL_REVIEW` y se
+muestra sin nota, aunque la columna numérica existente almacene 0 como centinela.
 
 Devuelve `{ decision, confidence, summary, overall_score, strengths[],
 improvements[], criteria (la ficha completa), criticalFlags[] }`.
 
-### 7.3 Contexto y coherencia (`summarizeContext`, `checkSessionCoherence`)
+### 7.3 Contexto (`summarizeContext`)
 [context.service.ts](../api/src/services/analysis/context.service.ts):
 - `summarizeContext` resume **de qué trata realmente el contenido** (área, título, resumen 2–4 frases, temas, grado, periodo) — se guarda en `artifact_contexts`.
-- `checkSessionCoherence` compara el contexto de la sesión con el de su unidad y devuelve `{ coherent, confidence, reason }`. Si no es coherente (otra área/temas ajenos), la sesión se marca inválida.
+- El contexto guardado de la unidad se proporciona al evaluador de una sesión para valorar su coherencia dentro del criterio 3. Ya no hay una llamada posterior que invalide por separado la sesión.
 
-La rúbrica (claves de documentos, ítems por dimensión, escala, exclusiones y los
-schemas Zod) vive en
+La rúbrica (ocho criterios, escala, umbral y schemas Zod) vive en
 [rubric.ts](../api/src/services/analysis/rubric.ts).
 
 ## 8. Frontend (React SPA)
@@ -387,15 +383,14 @@ trigger escribe en `audit_logs` con `{from, to}` y actor.
 | Var | Default | Rol |
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | — (obligatorias) | Cliente service-role. |
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | — / `gemini-2.5-flash` | IA. |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | — / `gemini-3.7-flash` | IA. |
 | `TIMEZONE` | `America/Lima` | Cálculo día/hora de la ventana de subida. |
 | `SESSION_UPLOAD_WINDOW_BEFORE_MINUTES` | `30` | Minutos antes del inicio en que se admite la sesión. |
 | `MAX_UPLOAD_SIZE_MB` | `15` | Límite de multer. |
-| `VALID_SCORE_MIN` | `60` | Umbral de validez (0–100). |
 | `PORT` | `3001` | Puerto de la API. |
 | `SUPABASE_DB_URL` | — | Cadena Postgres (Session pooler) para el script de migración. |
 
-Constantes fijas en código: `PROMPT_VERSION='v2'`, `RUBRIC_VERSION='ficha-monitoreo-ugel06.v1'`, `ALLOWED` = `.pdf/.pptx/.xlsx`.
+Constantes fijas en código: `VALID_SCORE_MIN=75`, `PROMPT_VERSION='v3'`, `RUBRIC_VERSION='planificacion-4primaria.v1'`, `ALLOWED` = `.pdf/.pptx/.xlsx`.
 
 ### Variables (Web)
 `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.

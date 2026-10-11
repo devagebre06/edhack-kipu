@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import { ArrowLeft } from 'lucide-react'
 import { periodoCorto } from '@/config/labels'
+import { PROFESOR_SCORE_LABELS } from '@/config/scoringLabels'
 import { useProfesor } from '@/hooks'
 import { Section, Spinner, Stat, Table, Badge } from '@/components'
 import { Card, CardContent } from '@/components/ui'
@@ -98,9 +99,9 @@ export default function UgelProfesorDetalle() {
         <Card>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-3">
-              <ScoreBar label="Logro" value={s.logro} hint={`promedio ${p.average_score_1_to_4 ?? '—'}/4 de sus alumnos`} />
-              <ScoreBar label="Equidad" value={s.equidad} hint={`${p.pct_critico}% de sus alumnos en inicio`} />
-              <ScoreBar label="Cobertura" value={s.cobertura} hint={`${p.total_evaluaciones} alumnos evaluados`} />
+              <ScoreBar label={PROFESOR_SCORE_LABELS.logro} value={s.logro} hint={`Promedio ${p.average_score_1_to_4 ?? '—'}/4 de sus estudiantes`} />
+              <ScoreBar label={PROFESOR_SCORE_LABELS.equidad} value={s.equidad} hint={`${p.pct_critico}% de sus estudiantes están en C (En inicio)`} />
+              <ScoreBar label={PROFESOR_SCORE_LABELS.cobertura} value={s.cobertura} hint={`${p.total_evaluaciones} evaluados, comparados con el mayor grupo`} />
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-6 border-t pt-4 text-sm">
               <div>
@@ -147,7 +148,7 @@ export default function UgelProfesorDetalle() {
 
       <Section title="Aulas que dicta">
         <Table
-          head={['Aula', 'Turno', 'Área', 'Institución', 'Alumnos', 'Diagnóstico', 'Actual', 'Avance', 'Distribución', 'Logro', 'Equidad']}
+          head={['Aula', 'Turno', 'Área', 'Institución', 'Alumnos', 'Diagnóstico', 'Actual', 'Avance', 'Distribución', 'Promedio actual del aula (0–100)', PROFESOR_SCORE_LABELS.equidad]}
           empty="Sin aulas asignadas."
           rows={aulas.map(a => [
             <span key={`a-${a.dictado_id}`} className="font-medium">{a.aula_nombre}</span>,

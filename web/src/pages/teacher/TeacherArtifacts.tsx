@@ -140,7 +140,7 @@ export default function TeacherArtifacts() {
                               `v${v.version}`,
                               v.original_filename,
                               new Date(v.created_at).toLocaleString('es-PE'),
-                              v.evaluations?.[0]?.overall_score ?? '—',
+                              v.status === 'MANUAL_REVIEW' ? '—' : v.evaluations?.[0]?.overall_score ?? '—',
                               <Badge value={v.status} label={STATUS_LABEL[v.status]} />,
                             ])}
                           />

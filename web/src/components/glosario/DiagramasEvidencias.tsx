@@ -88,7 +88,7 @@ export function UmbralValidez() {
                 style={{ width: `${c.p}%`, background: c.valida ? COLOR.logrado : COLOR.intermedio }}
               />
               {/* Línea del umbral */}
-              <div className="absolute inset-y-0 border-l-2 border-dashed border-foreground/50" style={{ left: '60%' }} />
+              <div className="absolute inset-y-0 border-l-2 border-dashed border-foreground/50" style={{ left: '75%' }} />
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-[11px]">
               {c.valida
@@ -100,38 +100,21 @@ export function UmbralValidez() {
           </div>
         ))}
       </div>
-      <p className="mt-1.5 text-[10px] text-muted-foreground">La línea punteada marca el mínimo: 60/100.</p>
+      <p className="mt-1.5 text-[10px] text-muted-foreground">La línea punteada marca el mínimo: 75/100.</p>
     </Marco>
   )
 }
 
-/** Composición de la ficha: dimensiones, ítems y cómo puntúa cada uno. */
+/** Ocho criterios con igual peso. */
 export function ComposicionFicha() {
-  const dims = [
-    { d: 'A', n: 'Insumos para la planificación', items: 2 },
-    { d: 'B', n: 'Planificación anual', items: 3 },
-    { d: 'C', n: 'Unidad didáctica', items: 7 },
-    { d: 'D', n: 'Sesión de aprendizaje', items: 5 },
-  ]
-  const total = dims.reduce((s, x) => s + x.items, 0)
+  const criterios = ['Alineación curricular', 'Pertinencia para 4.º grado', 'Coherencia', 'Secuencia', 'Evidencia y criterios', 'Evaluación y feedback', 'Diversidad', 'Claridad y viabilidad']
   return (
-    <Marco pie={`${total} ítems en total, más 5 desempeños de aula que se valoran aparte.`}>
-      <ul className="space-y-1.5">
-        {dims.map((x) => (
-          <li key={x.d} className="flex items-center gap-2 text-xs">
-            <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary text-[11px] font-semibold text-primary-foreground">
-              {x.d}
-            </span>
-            <span className="w-44 shrink-0 truncate text-muted-foreground">{x.n}</span>
-            <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-              <span className="block h-full rounded-full bg-primary/70" style={{ width: `${(x.items / total) * 100}%` }} />
-            </span>
-            <span className="w-12 shrink-0 text-right tabular-nums">{x.items} ít.</span>
-          </li>
-        ))}
-      </ul>
+    <Marco pie="Ocho criterios de 0 a 3 puntos: máximo 24; desde 18 puntos la entrega es satisfactoria.">
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {criterios.map((nombre, i) => <div key={nombre} className="rounded-md border px-2 py-1 text-xs"><span className="mr-1 font-semibold text-primary">{i + 1}.</span>{nombre}</div>)}
+      </div>
       <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
-        {[['Logrado', 3, COLOR.logrado], ['En proceso', 2, COLOR.intermedio], ['Inicio', 1, COLOR.critico]].map(([t, v, c]) => (
+        {[['Logrado', 3, COLOR.logrado], ['En proceso', 2, COLOR.intermedio], ['Inicio', 1, COLOR.critico], ['Sin evidencia', 0, COLOR.critico]].map(([t, v, c]) => (
           <span key={t as string} className="rounded-full border px-2 py-0.5" style={{ borderColor: c as string, color: c as string }}>
             {t as string} = {v as number}
           </span>
@@ -141,16 +124,16 @@ export function ComposicionFicha() {
   )
 }
 
-/** Cómo se llega del puntaje de los ítems al 0-100. */
+/** Cómo se llega de los ocho criterios al 0-100. */
 export function CalculoPuntaje() {
   return (
-    <Marco pie="Los ítems marcados «no aplica» quedan fuera del máximo, para no penalizar por algo que no correspondía.">
+    <Marco pie="Los ocho criterios tienen igual peso. El servidor calcula la nota; el modelo solo asigna los puntos.">
       <div className="rounded-lg border p-3">
-        <Fila etiqueta="Puntos obtenidos" valor="34" barra={87} color={COLOR.logrado} />
-        <Fila etiqueta="Máximo aplicable" valor="39" barra={100} color="var(--muted-foreground)" />
+        <Fila etiqueta="Puntos obtenidos" valor="18" barra={75} color={COLOR.logrado} />
+        <Fila etiqueta="Máximo" valor="24" barra={100} color="var(--muted-foreground)" />
         <div className="mt-2 border-t pt-2 text-xs">
-          <span className="text-muted-foreground">34 ÷ 39 × 100 = </span>
-          <span className="font-semibold tabular-nums" style={{ color: COLOR.logrado }}>87/100</span>
+          <span className="text-muted-foreground">18 ÷ 24 × 100 = </span>
+          <span className="font-semibold tabular-nums" style={{ color: COLOR.logrado }}>75/100</span>
         </div>
       </div>
     </Marco>
@@ -166,7 +149,7 @@ export function EjemploRetroalimentacion() {
           <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-white" style={{ background: COLOR.intermedio }}>
             En proceso
           </span>
-          <span className="font-medium">8 · Criterios de evaluación</span>
+          <span className="font-medium">5 · Evidencia y criterios de evaluación</span>
         </div>
         <p className="mt-2 flex gap-1.5 text-[11px] text-muted-foreground">
           <Quote className="size-3 shrink-0 translate-y-0.5" />

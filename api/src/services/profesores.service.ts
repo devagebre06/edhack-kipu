@@ -41,16 +41,17 @@ function distribution(critico: number, intermedio: number, logrado: number, tota
 
 // ── Scoring compuesto del docente ────────────────────────────────────────────
 // Se calcula solo con lo que la evaluación diagnóstica ya dice de sus alumnos.
-// Tres componentes en 0-100, más una lectura contextual:
-//   logro       — qué tan arriba está el promedio de sus alumnos en la escala 1-4.
-//   equidad     — qué proporción de sus alumnos NO quedó en nivel "En inicio";
-//                 penaliza al aula que avanza dejando atrás a una parte.
-//   cobertura   — cuántos alumnos evaluó, relativo al docente que más evaluó;
-//                 evita que un grupo diminuto compita de igual a igual con uno grande.
+// Tres componentes en 0-100, más una lectura contextual. Las claves de la API
+// se conservan; los nombres visibles están en web/src/config/scoringLabels.ts:
+//   logro       — promedio diagnóstico del grupo, convertido de 1-4 a 0-100.
+//   equidad     — proporción de estudiantes por encima de C (B, A o AD).
+//   cobertura   — tamaño relativo del grupo evaluado frente al mayor grupo de
+//                 profesor-área en la consulta; no es % de matrícula evaluada.
 //   valor_agregado — su promedio menos el de su distrito (escala 1-4). Positivo =
 //                 rinde por encima de lo esperable en su entorno. No entra en el
 //                 global: es contexto, no mérito.
-// global = 55% logro + 30% equidad + 15% cobertura.
+// global = 55% promedio diagnóstico + 30% estudiantes por encima de C
+//        + 15% tamaño relativo del grupo evaluado.
 const PESOS = { logro: 0.55, equidad: 0.3, cobertura: 0.15 } as const
 
 // Etiquetas de lectura (acompañan, no sancionan — ver PRODUCT.md).
@@ -331,7 +332,7 @@ export async function buildProfesorDetalle(dni: string) {
       const evaluacion = versiones.flatMap((v: any) => v.evaluaciones ?? [])[0] ?? null
       return {
         id: e.id, estado: e.estado, version_actual: e.version_actual, created_at: e.created_at,
-        puntaje: evaluacion?.puntaje_total ?? null,
+        puntaje: evaluacion?.decision === 'MANUAL_REVIEW' ? null : evaluacion?.puntaje_total ?? null,
         decision: evaluacion?.decision ?? null,
         resumen: evaluacion?.resumen ?? null,
         versiones: versiones.length,

@@ -3,7 +3,7 @@ import { Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { STATUS_LABEL } from '@/config/labels'
 import { ARTIFACT_STATUS_FILTERS } from '@/config/constants'
 import { useUgelData } from '@/hooks'
-import { unitsWithSessions, subjectName, isValid, countByStatus, latestEvaluation } from '@/factories'
+import { unitsWithSessions, subjectName, isValid, countByStatus, artifactScore } from '@/factories'
 import { Badge, Section, Spinner, Stat, ArtifactBlock } from '@/components'
 import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
 import type { Artifact, Institution } from '@/types'
@@ -46,7 +46,7 @@ export default function UgelEvidencias() {
 
   const sesiones = grupos.flatMap(g => g.sessions)
   const { approved, revision } = countByStatus(artifacts)
-  const puntajes = artifacts.map(a => latestEvaluation(a)?.overall_score).filter((s): s is number => s != null)
+  const puntajes = artifacts.map(artifactScore).filter((s): s is number => s != null)
   const promedio = puntajes.length ? Math.round(puntajes.reduce((a, b) => a + b, 0) / puntajes.length) : null
 
   // Instituciones que realmente tienen entregas (no las 166 de la UGEL).

@@ -1,10 +1,6 @@
-// Contexto de contenido del PDF (oculto para el docente) y coherencia sesión↔unidad.
-//
-//  · summarizeContext(): resume de qué trata el documento (área, temas, periodo).
-//    Se calcula tanto para unidades como para sesiones y se guarda por versión.
-//  · checkSessionCoherence(): compara el contexto de una sesión contra el de su
-//    unidad para decidir si la sesión pertenece realmente a esa unidad (p. ej. una
-//    sesión de comunicación NO debe registrarse en una unidad de matemática).
+// Contexto de contenido del documento (oculto para el docente).
+// Se guarda por versión; en sesiones, el contexto de la unidad vinculada se
+// entrega al evaluador para valorar la coherencia dentro de la rúbrica.
 import { z } from 'zod'
 import { gemini } from './gemini.client.ts'
 
@@ -46,44 +42,6 @@ export async function summarizeContext(markdown: string, meta: ContextMeta): Pro
           grado: { type: 'STRING' }, periodo: { type: 'STRING' },
         },
         required: ['area', 'titulo', 'resumen', 'temas', 'grado', 'periodo'],
-      },
-    },
-  }))
-}
-
-const CoherenceSchema = z.object({
-  coherent: z.boolean(),
-  confidence: z.number(),
-  reason: z.string(), // explicación breve, apta para mostrar al docente
-})
-export type Coherence = z.infer<typeof CoherenceSchema>
-
-/** Prompt de coherencia sesión↔unidad (exportado para la pantalla «Cómo se evalúa»). */
-export const promptCoherencia = (sesion: string, unidad: string) => `Eres un especialista de la UGEL 06 que verifica que una SESIÓN de aprendizaje corresponda a su UNIDAD didáctica. Una sesión NO es coherente si es de otra área/curso (p. ej. una sesión de Comunicación dentro de una unidad de Matemática) o si aborda temas ajenos a los de la unidad. Sé estricto con el área; sé flexible con los temas (una sesión cubre solo una parte de la unidad).
-
-CONTEXTO DE LA UNIDAD:
-${unidad}
-
-CONTEXTO DE LA SESIÓN:
-${sesion}
-
-Responde SOLO el JSON pedido:
-- coherent: true si la sesión pertenece razonablemente a la unidad; false si es de otra área o claramente ajena.
-- confidence: 0-1, tu certeza.
-- reason: 1-2 frases explicando la decisión, en tono formativo para el docente (sin mencionar puntajes).`
-
-/** Decide si una sesión pertenece a la unidad, comparando ambos contextos de contenido. */
-export async function checkSessionCoherence(session: ArtifactContext, unit: ArtifactContext): Promise<Coherence> {
-  return CoherenceSchema.parse(await gemini({
-    contents: [{ parts: [{ text: promptCoherencia(JSON.stringify(session), JSON.stringify(unit)) }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: 'OBJECT',
-        properties: {
-          coherent: { type: 'BOOLEAN' }, confidence: { type: 'NUMBER' }, reason: { type: 'STRING' },
-        },
-        required: ['coherent', 'confidence', 'reason'],
       },
     },
   }))

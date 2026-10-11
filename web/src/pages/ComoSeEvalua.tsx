@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import {
-  ScrollText, Cpu, Server, FileText, Layers, ChevronDown, ChevronUp, Copy, Check, ShieldCheck, ExternalLink, FileBadge,
+  ScrollText, Cpu, Server, FileText, ChevronDown, ChevronUp, Copy, Check, ExternalLink, FileBadge,
   Play, Pause, RotateCcw, ArrowRight, ArrowDown, CornerDownRight,
 } from 'lucide-react'
 import { useConfigEvaluacion, useProfile } from '@/hooks'
@@ -12,10 +12,7 @@ import type { PasoEvaluacion } from '@/types'
 const TIPO = { UNIDAD: 'Unidad', SESION: 'Sesión' } as const
 type Tipo = keyof typeof TIPO
 
-const COLOR_VAL: Record<string, string> = {
-  LOGRADO: '#43A047', PROCESO: '#FBC02D', INICIO: '#D32F2F',
-  NO_EVIDENCIADO: '#94a3b8', NO_APLICA: '#94a3b8',
-}
+const COLOR_VAL = ['#94a3b8', '#D32F2F', '#FBC02D', '#43A047']
 const COLOR_ESTADO: Record<string, string> = {
   APPROVED: '#43A047', NEEDS_REVISION: '#FBC02D', MANUAL_REVIEW: '#94a3b8', PROCESSING_ERROR: '#D32F2F',
 }
@@ -263,11 +260,6 @@ export default function ComoSeEvalua() {
 
   const { motor, decisiones, rubrica, prompts } = data
   const paso = pasosDelTipo[Math.min(activo, ultimo)]
-  const porDimension = rubrica.dimensiones.map(d => ({
-    ...d,
-    items: rubrica.items.filter(i => i.dimension === d.clave),
-  }))
-  const aplicables = rubrica.items.filter(i => !i.excluido).length
 
   return (
     <div>
@@ -278,16 +270,16 @@ export default function ComoSeEvalua() {
         </h1>
         <p className="mt-1 max-w-[80ch] text-sm text-muted-foreground">
           Todo lo que la plataforma usa para valorar {docente ? 'tus unidades y sesiones' : 'las unidades y sesiones'}:
-          el recorrido que sigue cada entrega, la ficha de monitoreo con la que se compara y las instrucciones
+          el recorrido que sigue cada entrega, los ocho criterios con que se compara y las instrucciones
           exactas que recibe la IA. Nada de esto es secreto — si un resultado no
           {docente ? ' te cuadra' : ' cuadra'}, aquí está el porqué.
         </p>
       </header>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Ítems que puntúan" value={`${aplicables} de ${rubrica.items.length}`} />
-        <Stat label="Puntaje mínimo para ser válida" value={`${motor.puntaje_minimo_valida}/100`} />
-        <Stat label="Desempeños de aula" value={rubrica.desempenos.length} />
+        <Stat label="Criterios" value={rubrica.items.length} />
+        <Stat label="Máximo" value={`${motor.puntaje_maximo_rubrica} puntos`} />
+        <Stat label="Resultado satisfactorio" value={`${motor.puntaje_minimo_valida}/100`} />
         <Stat label="Rúbrica" value={<span className="text-base">{motor.rubrica_version}</span>} />
       </div>
 
@@ -331,8 +323,8 @@ export default function ComoSeEvalua() {
       >
         <p className="mb-4 max-w-[80ch] text-sm text-muted-foreground">
           {tipo === 'SESION'
-            ? 'Una sesión pasa por un paso más que una unidad: se comprueba que pertenezca a la unidad que elegiste.'
-            : 'Una unidad se evalúa por sí sola: no tiene un documento «padre» contra el que contrastarla.'}
+            ? 'En una sesión, la relación con su unidad forma parte del criterio de coherencia.'
+            : 'Una unidad se valora según sus propios propósitos, secuencia y evidencias.'}
           {' '}Haz clic en cualquier paso —o dale a reproducir— para ver qué entra y qué sale de él.
         </p>
 
@@ -384,33 +376,30 @@ export default function ComoSeEvalua() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Nivel global: promedio ≥ {motor.cortes_nivel[0].desde} logrado · ≥ {motor.cortes_nivel[1].desde} en proceso · por debajo, inicio.
-              </p>
+              <p className="mt-2 text-[11px] text-muted-foreground">La confianza del modelo se registra para seguimiento, pero no añade un requisito para aprobar.</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent>
               <p className="mb-2 flex items-center gap-2 text-sm font-medium">
-                <ShieldCheck className="size-4 text-muted-foreground" /> Que cuente como válida es otra cosa
+                <FileText className="size-4 text-muted-foreground" /> Cómo se calcula
               </p>
               <p className="text-sm text-muted-foreground">
-                Tu entrega <strong>siempre queda registrada</strong>, aunque necesite corrección. La validez decide
-                si cuenta como unidad o sesión completa:
+                La entrega queda registrada y recibe feedback. Si el archivo se pudo leer, la nota depende solo de los ocho criterios:
               </p>
               <ul className="mt-2 space-y-1.5 text-sm">
                 <li className="flex gap-2">
                   <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  Alcanzar al menos <strong>{motor.puntaje_minimo_valida}/100</strong> de puntaje.
+                  Cada criterio recibe entre 0 y 3 puntos; el máximo es <strong>{motor.puntaje_maximo_rubrica}</strong>.
                 </li>
                 <li className="flex gap-2">
-                  <Layers className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  Si es una <strong>sesión</strong>, pertenecer al área y los temas de su unidad.
+                  <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  Desde <strong>{motor.puntaje_minimo_rubrica} puntos</strong> se obtiene {motor.puntaje_minimo_valida}/100 y un resultado satisfactorio.
                 </li>
               </ul>
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Si no se cumple, verás el motivo concreto junto a la entrega.
+                Si el archivo no se puede leer, queda sin calificar y se muestra el motivo.
               </p>
             </CardContent>
           </Card>
@@ -418,105 +407,38 @@ export default function ComoSeEvalua() {
       </Section>
 
       {/* ── Rúbrica ── */}
-      <Section title="La ficha de monitoreo (Sección II)">
-        {/* De dónde sale la rúbrica: el documento oficial, descargable. */}
-        <div className="mb-4 overflow-hidden rounded-xl border bg-card shadow-xs">
-          <div className="flex flex-wrap items-start gap-3 p-4">
-            <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <FileBadge className="size-4.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Documento del que sale esta rúbrica
-              </p>
-              <p className="mt-0.5 text-sm font-medium">{rubrica.fuente.titulo}</p>
-              <p className="mt-0.5 text-sm text-muted-foreground">{rubrica.fuente.asunto}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {rubrica.fuente.emisor} · {new Date(`${rubrica.fuente.fecha}T00:00:00`).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}
-                {' · '}Expediente {rubrica.fuente.expediente}
-              </p>
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {rubrica.fuente.secciones.map(s => (
-                  <li key={s} className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">{s}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <a
-            href={rubrica.fuente.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 border-t px-4 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-          >
-            <ExternalLink className="size-3.5 shrink-0" />
-            Ver el documento completo (PDF)
-          </a>
-        </div>
-
-        <p className="mb-3 max-w-[80ch] text-sm text-muted-foreground">
-          {rubrica.nota_excluidos} Hoy puntúan <strong>{aplicables} ítems</strong>, agrupados en cuatro dimensiones.
-        </p>
-        <div className="grid gap-3 lg:grid-cols-2">
-          {porDimension.map(d => (
-            <div key={d.clave} className="rounded-xl border bg-card p-4 shadow-xs">
-              <div className="flex items-center gap-2">
-                <span className="grid size-6 place-items-center rounded-md bg-primary text-xs font-semibold text-primary-foreground">
-                  {d.clave}
-                </span>
-                <span className="text-sm font-medium">{d.nombre}</span>
-                <span className="ml-auto text-[11px] text-muted-foreground">
-                  {d.items.filter(i => !i.excluido).length} de {d.items.length} puntúan
-                </span>
-              </div>
-              <ol className="mt-2 space-y-1">
-                {d.items.map(i => (
-                  <li key={i.numero} className={cn('flex items-baseline gap-2 text-xs', i.excluido && 'opacity-50')}>
-                    <span className="w-5 shrink-0 text-right tabular-nums text-muted-foreground">{i.numero}</span>
-                    <span className={cn(i.excluido && 'line-through')}>{i.nombre}</span>
-                    {i.excluido && <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">excluido</span>}
-                  </li>
-                ))}
-              </ol>
+      <Section title="Los ocho criterios de planificación">
+        <p className="mb-4 max-w-[80ch] text-sm text-muted-foreground">{rubrica.nota}</p>
+        <div className="mb-4 grid gap-3 lg:grid-cols-3">
+          {rubrica.fuentes.map(fuente => (
+            <div key={fuente.nombre} className="rounded-xl border bg-card p-4 shadow-xs">
+              <p className="flex items-center gap-2 text-sm font-medium"><FileBadge className="size-4 text-primary" />{fuente.nombre}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{fuente.aporte}</p>
             </div>
           ))}
         </div>
-
-        <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <Card>
-            <CardContent>
-              <p className="mb-2 text-sm font-medium">Cómo se valora cada ítem</p>
-              <ul className="space-y-1.5">
-                {rubrica.valoraciones.map(v => (
-                  <li key={v.codigo} className="flex items-baseline gap-2 text-sm">
-                    <span className="mt-1 size-2 shrink-0 rounded-full" style={{ background: COLOR_VAL[v.codigo] }} />
-                    <span className="font-medium" style={{ color: COLOR_VAL[v.codigo] }}>{v.label}</span>
-                    <span className="tabular-nums text-xs text-muted-foreground">
-                      {v.puntaje == null ? 'sin puntaje' : `${v.puntaje} pts`}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{v.nota}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <p className="mb-2 text-sm font-medium">Sección III · Desempeños de aula</p>
-              <ol className="space-y-1 text-sm">
-                {rubrica.desempenos.map(d => (
-                  <li key={d.numero} className="flex items-baseline gap-2">
-                    <span className="w-4 shrink-0 text-right tabular-nums text-muted-foreground">{d.numero}</span>
-                    <span className="text-muted-foreground">{d.nombre}</span>
-                  </li>
-                ))}
-              </ol>
-              <p className="mt-2 rounded-md bg-muted/60 px-2.5 py-1.5 text-[11px] text-muted-foreground">
-                {rubrica.nota_desempenos}
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {rubrica.items.map(item => (
+            <div key={item.numero} className="rounded-xl border bg-card p-4 shadow-xs">
+              <p className="text-sm font-medium"><span className="mr-2 text-primary">{item.numero}.</span>{item.nombre}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{item.fuente}</p>
+            </div>
+          ))}
         </div>
+        <Card>
+          <CardContent>
+            <p className="mb-2 text-sm font-medium">Puntos por criterio</p>
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {rubrica.valoraciones.map(v => (
+                <li key={v.puntaje} className="flex items-baseline gap-2 text-sm">
+                  <span className="mt-1 size-2 shrink-0 rounded-full" style={{ background: COLOR_VAL[v.puntaje] }} />
+                  <span className="shrink-0 font-medium">{v.puntaje} · {v.label}</span>
+                  <span className="text-xs text-muted-foreground">{v.nota}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       </Section>
 
       {/* ── Prompts ── */}
@@ -557,7 +479,7 @@ export default function ComoSeEvalua() {
                 ['Versión del prompt', motor.prompt_version],
                 ['Formatos aceptados', motor.formatos.join(', ')],
                 ['Tamaño máximo', `${motor.max_mb} MB`],
-                ['Confianza mínima', `${motor.confianza_minima} (por debajo va a revisión humana)`],
+                ['Puntaje satisfactorio', `${motor.puntaje_minimo_rubrica}/${motor.puntaje_maximo_rubrica} puntos`],
                 ['Texto máximo analizado', `${motor.limite_texto.toLocaleString('es-PE')} caracteres`],
               ].map(([k, v]) => (
                 <div key={k as string} className="flex justify-between gap-3 border-b py-1 last:border-b-0">

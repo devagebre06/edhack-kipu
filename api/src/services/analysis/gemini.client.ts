@@ -8,5 +8,17 @@ export async function gemini(payload: object) {
   )
   const body = await res.json() as any
   if (!res.ok) throw new Error(`gemini ${res.status}: ${JSON.stringify(body).slice(0, 300)}`)
-  return JSON.parse(body.candidates[0].content.parts[0].text)
+  // Gemini 3 puede incluir partes de razonamiento antes de la respuesta final.
+  // Solo la salida visible del modelo contiene el JSON solicitado.
+  const parts = body.candidates?.[0]?.content?.parts as
+    | { text?: string; thought?: boolean }[]
+    | undefined
+  const answer = parts
+    ?.filter(part => !part.thought && typeof part.text === 'string')
+    .map(part => part.text)
+    .join('')
+  if (!answer) {
+    throw new Error(`gemini: respuesta sin JSON (finishReason: ${body.candidates?.[0]?.finishReason ?? 'desconocido'})`)
+  }
+  return JSON.parse(answer)
 }

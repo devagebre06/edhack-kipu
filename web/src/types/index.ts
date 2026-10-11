@@ -80,13 +80,25 @@ export type Ficha = {
   puntaje_total: number; puntaje_max: number; promedio: number; nivel_global: string
   recomendaciones_priorizadas: string[]; compromisos_docente: string[]; compromisos_especialista: string[]
 }
+export type RubricaKipu = {
+  version: string
+  tipo: string
+  extraccion: { identificacion: Record<string, string>; documentos_presentes: Record<string, boolean> }
+  items: {
+    numero: number; nombre: string; fuente: string; puntaje: number; nivel: string
+    evidencia: string; recomendacion: string
+  }[]
+  puntaje_total: number
+  puntaje_max: number
+  recomendaciones_priorizadas: string[]
+}
 export type Evaluation = {
   overall_score: number
   decision: string
   summary: string
   strengths: string[]
   improvements: string[]
-  criteria: Criterion[] | Ficha
+  criteria: Criterion[] | Ficha | RubricaKipu
 }
 
 // ── Contexto de contenido (IA) — visible solo para director/UGEL ──
@@ -106,7 +118,7 @@ export type ArtifactVersion = {
   status: ArtifactStatus
   created_at: string
   original_filename: string
-  /** Cuenta como sesión/unidad válida (superó el umbral y —si es sesión— es coherente con su unidad). */
+  /** Cuenta como sesión/unidad válida cuando alcanza 75/100 en la rúbrica vigente. */
   is_valid?: boolean
   /** Motivo (apto para el docente) cuando la versión no es válida; null si lo es. */
   invalid_reason?: string | null
@@ -182,7 +194,7 @@ export type AulaResumen = {
 export type UploadResult = {
   artifact_id: string
   status: ArtifactStatus
-  /** Si la entrega cuenta como válida (umbral de puntaje y coherencia con la unidad). */
+  /** Si la entrega cuenta como válida según su rúbrica. */
   is_valid?: boolean
   invalid_reason?: string | null
   evaluation?: Evaluation
@@ -287,7 +299,7 @@ export type ProfesorScores = {
   equidad: number
   /** 0-100: alumnos evaluados, relativo al docente que más evaluó. */
   cobertura: number
-  /** 0-100: compuesto ponderado (55% logro · 30% equidad · 15% cobertura). */
+  /** 0-100: promedio diagnóstico 55%, estudiantes por encima de C 30%, tamaño relativo 15%. */
   global: number
   /** Promedio del docente menos el de su distrito (escala 1-4). */
   valor_agregado: number | null
@@ -626,30 +638,18 @@ export type ConfigEvaluacion = {
     formatos: string[]
     max_mb: number
     puntaje_minimo_valida: number
-    confianza_minima: number
-    cortes_nivel: { desde: number; nivel: string }[]
+    puntaje_maximo_rubrica: number
+    puntaje_minimo_rubrica: number
     limite_texto: number
   }
   pasos: PasoEvaluacion[]
   decisiones: { estado: string; label: string; regla: string }[]
   rubrica: {
-    /** Documento oficial del que sale la rúbrica. */
-    fuente: {
-      titulo: string
-      asunto: string
-      emisor: string
-      fecha: string
-      expediente: string
-      secciones: string[]
-      url: string
-    }
-    dimensiones: { clave: string; nombre: string }[]
-    valoraciones: { codigo: string; label: string; puntaje: number | null; nota: string }[]
-    items: { numero: number; dimension: string; dimension_nombre: string; nombre: string; excluido: boolean }[]
-    excluidos: number[]
-    nota_excluidos: string
-    desempenos: { numero: number; nombre: string }[]
-    nota_desempenos: string
+    nombre: string
+    nota: string
+    fuentes: { nombre: string; aporte: string }[]
+    valoraciones: { puntaje: number; label: string; nota: string }[]
+    items: { numero: number; nombre: string; fuente: string }[]
   }
   prompts: { clave: string; titulo: string; cuando: string; texto: string }[]
 }

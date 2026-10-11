@@ -33,7 +33,7 @@ export default function TeacherUpload() {
   const [unidadId, setUnidadId] = useState('')
   const [nombre, setNombre] = useState('')
   const [error, setError] = useState('')
-  const [done, setDone] = useState<{ score: number; valid: boolean; reason?: string | null } | null>(null)
+  const [done, setDone] = useState<{ score: number | null; valid: boolean; reason?: string | null } | null>(null)
 
   const isUnit = tipo === 'UNIDAD'
   const isSession = tipo === 'SESION'
@@ -69,7 +69,7 @@ export default function TeacherUpload() {
     try {
       const result = await submitArtifact.mutateAsync({ form })
       setFile(null); setDictadoId(''); setUnidadId(''); setNombre('')
-      setDone({ score: result.evaluation?.overall_score ?? 0, valid: result.is_valid ?? false, reason: result.invalid_reason })
+      setDone({ score: result.status === 'MANUAL_REVIEW' ? null : result.evaluation?.overall_score ?? null, valid: result.is_valid ?? false, reason: result.invalid_reason })
     } catch (err: any) { setError(err.message) }
   }
 
@@ -100,7 +100,7 @@ export default function TeacherUpload() {
           <Alert variant="warning" className="mt-4">
             <AlertCircle />
             <AlertDescription className="flex flex-col gap-2">
-              <span className="font-medium">Documento subido, pero no cuenta como entrega válida — puntaje {done.score}/100</span>
+              <span className="font-medium">Documento subido, pero no cuenta como entrega válida{done.score == null ? ' — sin calificar' : ` — puntaje ${done.score}/100`}</span>
               <span className="text-muted-foreground">{done.reason || 'No alcanzó los criterios mínimos. Puedes subir una versión corregida desde «Mis entregas».'}</span>
               <span className="flex gap-3">
                 <Button variant="link" size="sm" className="h-auto p-0 text-warning-foreground" onClick={() => setDone(null)}>Subir otra</Button>
@@ -228,8 +228,8 @@ export default function TeacherUpload() {
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </span>
             <span className="mt-0.5 block text-sm text-muted-foreground">
-              El recorrido paso a paso de tu entrega, la ficha de monitoreo con la que se compara y las
-              instrucciones exactas que recibe la IA. Nada es una caja negra.
+              El recorrido paso a paso de tu entrega, los ocho criterios de planificación y las
+              instrucciones exactas que recibe la IA.
             </span>
             {motor && (
               <span className="mt-2 flex flex-wrap gap-1.5">

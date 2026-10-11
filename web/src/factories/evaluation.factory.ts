@@ -3,12 +3,18 @@
 // (objeto) o el formato legacy (array de criterios). Este es el
 // único lugar que decide cuál es cuál.
 // ─────────────────────────────────────────────────────────────
-import type { Criterion, Evaluation, Ficha } from '@/types'
+import type { Criterion, Evaluation, Ficha, RubricaKipu } from '@/types'
 
 /** Devuelve la Ficha de monitoreo si la evaluación usa ese formato. */
 export function getFicha(ev: Evaluation): Ficha | null {
   const c = ev.criteria
-  return !Array.isArray(c) && (c as Ficha)?.items ? (c as Ficha) : null
+  return !Array.isArray(c) && Array.isArray((c as Ficha)?.desempenos) ? (c as Ficha) : null
+}
+
+/** Rúbrica vigente de ocho criterios; las fichas anteriores conservan su vista histórica. */
+export function getRubricaKipu(ev: Evaluation): RubricaKipu | null {
+  const c = ev.criteria
+  return !Array.isArray(c) && c?.version?.startsWith('planificacion-4primaria.') ? c as RubricaKipu : null
 }
 
 /** Devuelve los criterios legacy si la evaluación usa ese formato.
@@ -22,7 +28,7 @@ export function getLegacyCriteria(ev: Evaluation): Criterion[] {
 
 /** Diferencia de puntaje frente a una evaluación previa. */
 export function scoreDelta(ev: Evaluation, prev?: Evaluation): number | null {
-  if (!prev) return null
+  if (!prev || ev.decision === 'MANUAL_REVIEW' || prev.decision === 'MANUAL_REVIEW') return null
   return ev.overall_score - prev.overall_score
 }
 

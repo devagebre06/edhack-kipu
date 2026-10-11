@@ -27,7 +27,8 @@ export function previousEvaluation(a: Artifact): Evaluation | undefined {
 
 /** Puntaje global de la versión actual, o undefined si aún no hay. */
 export function artifactScore(a: Artifact): number | undefined {
-  return latestEvaluation(a)?.overall_score
+  const ev = latestEvaluation(a)
+  return ev?.decision === 'MANUAL_REVIEW' ? undefined : ev?.overall_score
 }
 
 export function teacherName(a: Artifact): string {
@@ -40,7 +41,7 @@ export function subjectName(a: Artifact): string {
 /** Todos los puntajes de un conjunto de artifacts (aplanados). */
 export function allScores(list: Artifact[]): number[] {
   return list.flatMap(a => (a.artifact_versions ?? [])
-    .flatMap(v => (v.evaluations ?? []).map(e => e.overall_score)))
+    .flatMap(v => (v.evaluations ?? []).filter(e => e.decision !== 'MANUAL_REVIEW').map(e => e.overall_score)))
 }
 
 export function averageScore(list: Artifact[]): number | null {

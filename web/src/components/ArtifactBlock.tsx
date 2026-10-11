@@ -33,7 +33,7 @@ export function ArtifactBlock({ artifact, title, subtitle }: {
   const [full, setFull] = useState(false)
   const current = latestVersion(artifact)
   const ev = latestEvaluation(artifact)
-  const score = ev?.overall_score
+  const score = ev?.decision === 'MANUAL_REVIEW' ? null : ev?.overall_score
   const valid = isValid(artifact)
   const reason = invalidReason(artifact)
 

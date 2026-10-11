@@ -5,6 +5,7 @@ import {
   ScatterChart, Scatter, ZAxis,
 } from 'recharts'
 import { useProfesores } from '@/hooks'
+import { PROFESOR_SCORE_LABELS } from '@/config/scoringLabels'
 import { Section, Spinner, Stat, Table } from '@/components'
 import { Card, CardContent, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
 import type { MapaBucket, ProfesorResumen } from '@/types'
@@ -120,10 +121,10 @@ export default function UgelProfesores() {
                   <XAxis dataKey="name" fontSize={10} interval={0} angle={-30} textAnchor="end" height={56} />
                   <YAxis fontSize={12} domain={[0, 100]} />
                   <Tooltip />
-                  <Legend verticalAlign="top" height={26} />
-                  <Bar dataKey="logro" stackId="s" name="Logro" fill="var(--chart-1)" />
-                  <Bar dataKey="equidad" stackId="s" name="Equidad" fill="var(--chart-2)" />
-                  <Bar dataKey="cobertura" stackId="s" name="Cobertura" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
+                  <Legend verticalAlign="top" height={52} />
+                  <Bar dataKey="logro" stackId="s" name={PROFESOR_SCORE_LABELS.logro} fill="var(--chart-1)" />
+                  <Bar dataKey="equidad" stackId="s" name={PROFESOR_SCORE_LABELS.equidad} fill="var(--chart-2)" />
+                  <Bar dataKey="cobertura" stackId="s" name={PROFESOR_SCORE_LABELS.cobertura} fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

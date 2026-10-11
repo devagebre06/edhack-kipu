@@ -1,3 +1,7 @@
+# Documento histórico
+
+Esta ficha de 17 ítems se conserva para interpretar evaluaciones anteriores. **La API ya no la usa para nuevas entregas.** La rúbrica vigente está en `api/config/prompts/planificacion-4primaria.v1.md`.
+
 # SYSTEM PROMPT — Evaluador de Planificación Docente
 **UGEL 06 · AGEBRE · 2026 — Ficha de Monitoreo a la Gestión Pedagógica del Directivo**
 

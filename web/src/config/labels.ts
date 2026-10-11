@@ -28,9 +28,11 @@ export const DIMENSION_LABEL: Record<string, string> = {
 }
 export const VAL_LABEL: Record<string, string> = {
   LOGRADO: 'Logrado', PROCESO: 'En proceso', INICIO: 'Inicio', NO_APLICA: 'No aplica', NO_EVIDENCIADO: 'No evidenciado',
+  'Sin evidencia': 'Sin evidencia', 'En proceso': 'En proceso', Logrado: 'Logrado', Inicio: 'Inicio',
 }
 export const VAL_BADGE: Record<string, string> = {
   LOGRADO: 'APPROVED', PROCESO: 'PROCESSING', INICIO: 'NEEDS_REVISION', NO_APLICA: 'MANUAL_REVIEW', NO_EVIDENCIADO: 'NEEDS_REVISION',
+  'Sin evidencia': 'NEEDS_REVISION', 'En proceso': 'PROCESSING', Logrado: 'APPROVED', Inicio: 'NEEDS_REVISION',
 }
 export const ID_LABEL: Record<string, string> = {
   ie: 'IE', docente: 'Docente', nivel: 'Nivel', area: 'Área', grado_seccion: 'Grado/Sección',

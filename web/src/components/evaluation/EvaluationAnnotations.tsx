@@ -1,6 +1,6 @@
 import type { Evaluation } from '@/types'
 import { VAL_LABEL, VAL_BADGE } from '@/config/labels'
-import { getFicha, getLegacyCriteria } from '@/factories'
+import { getFicha, getRubricaKipu, getLegacyCriteria } from '@/factories'
 import { Badge } from '../Badge'
 
 type Note = { titulo: string; valoracion?: string; texto: string; recomendacion: string }
@@ -12,6 +12,10 @@ const isRealEvidence = (s?: string) =>
 
 /** Construye la lista de anotaciones: cada cita textual evaluada con su recomendación. */
 function buildNotes(ev: Evaluation): Note[] {
+  const rubrica = getRubricaKipu(ev)
+  if (rubrica) return rubrica.items
+    .filter(it => it.recomendacion?.trim() && isRealEvidence(it.evidencia))
+    .map(it => ({ titulo: `${it.numero}. ${it.nombre}`, valoracion: it.nivel, texto: it.evidencia, recomendacion: it.recomendacion }))
   const ficha = getFicha(ev)
   if (ficha) {
     const fromItems = ficha.items
@@ -36,7 +40,7 @@ function buildNotes(ev: Evaluation): Note[] {
  */
 export function EvaluationAnnotations({ ev }: { ev: Evaluation }) {
   const notes = buildNotes(ev)
-  const priorizadas = getFicha(ev)?.recomendaciones_priorizadas ?? []
+  const priorizadas = getRubricaKipu(ev)?.recomendaciones_priorizadas ?? getFicha(ev)?.recomendaciones_priorizadas ?? []
 
   if (!notes.length)
     return (

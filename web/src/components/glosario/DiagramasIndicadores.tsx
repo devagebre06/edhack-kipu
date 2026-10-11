@@ -1,5 +1,6 @@
 // Diagramas del glosario · Indicadores y scoring.
 import { Marco, BarraApilada, Regla, COLOR, Fila } from './primitivas'
+import { PROFESOR_SCORE_LABELS } from '@/config/scoringLabels'
 
 /** Cómo se agrupan los cuatro niveles en los tres colores del mapa. */
 export function NivelesMapa() {
@@ -35,9 +36,9 @@ export function NivelesMapa() {
 /** De qué está hecho el score: los tres componentes ponderados. */
 export function ComposicionScore() {
   const comp = [
-    { etiqueta: 'Logro', bruto: 64, peso: 0.55, color: 'var(--chart-1)' },
-    { etiqueta: 'Equidad', bruto: 99, peso: 0.3, color: 'var(--chart-2)' },
-    { etiqueta: 'Cobertura', bruto: 95, peso: 0.15, color: 'var(--chart-3)' },
+    { etiqueta: PROFESOR_SCORE_LABELS.logro, bruto: 64, peso: 0.55, color: 'var(--chart-1)' },
+    { etiqueta: PROFESOR_SCORE_LABELS.equidad, bruto: 99, peso: 0.3, color: 'var(--chart-2)' },
+    { etiqueta: PROFESOR_SCORE_LABELS.cobertura, bruto: 95, peso: 0.15, color: 'var(--chart-3)' },
   ]
   const total = Math.round(comp.reduce((s, c) => s + c.bruto * c.peso, 0))
   return (

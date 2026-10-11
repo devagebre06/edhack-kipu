@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import type { Feature, Geometry } from 'geojson'
 import type { Map as LeafletMap, Layer, Polygon, PathOptions } from 'leaflet'
 import { useMapa, useProfesores } from '@/hooks'
+import { PROFESOR_SCORE_LABELS } from '@/config/scoringLabels'
 import { Section, Spinner, Stat } from '@/components'
 import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
 import type { MapaBucket, MapaColegio, MapaDistribution, ProfesorResumen } from '@/types'
@@ -150,9 +151,9 @@ function ProfesorCard({ p }: { p: ProfesorResumen }) {
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <ScoreBar label="Logro" value={s.logro} hint="promedio en la escala 1-4" />
-          <ScoreBar label="Equidad" value={s.equidad} hint="alumnos fuera de «En inicio»" />
-          <ScoreBar label="Cobertura" value={s.cobertura} hint="alumnos evaluados" />
+          <ScoreBar label={PROFESOR_SCORE_LABELS.logro} value={s.logro} hint="Promedio diagnóstico convertido de 1–4 a 0–100" />
+          <ScoreBar label={PROFESOR_SCORE_LABELS.equidad} value={s.equidad} hint="Estudiantes en B, A o AD" />
+          <ScoreBar label={PROFESOR_SCORE_LABELS.cobertura} value={s.cobertura} hint="Comparado con el mayor grupo evaluado" />
         </div>
 
         <div className="mt-4"><DistBar distribution={p.distribution} /></div>
@@ -358,9 +359,9 @@ export default function MapaDiagnostico() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               El score compuesto combina{' '}
-              <strong>logro</strong> ({Math.round(profesores.scoring.pesos.logro * 100)}%),{' '}
-              <strong>equidad</strong> ({Math.round(profesores.scoring.pesos.equidad * 100)}%) y{' '}
-              <strong>cobertura</strong> ({Math.round(profesores.scoring.pesos.cobertura * 100)}%), calculados
+              <strong>{PROFESOR_SCORE_LABELS.logro}</strong> ({Math.round(profesores.scoring.pesos.logro * 100)}%),{' '}
+              <strong>{PROFESOR_SCORE_LABELS.equidad}</strong> ({Math.round(profesores.scoring.pesos.equidad * 100)}%) y{' '}
+              <strong>{PROFESOR_SCORE_LABELS.cobertura}</strong> ({Math.round(profesores.scoring.pesos.cobertura * 100)}%), calculados
               sobre las notas diagnósticas de sus alumnos. El valor agregado compara su promedio con el de su
               distrito. Referencia UGEL: {profesores.scoring.referencias.promedio_ugel ?? '—'}/4 sobre{' '}
               {profesores.scoring.referencias.alumnos_evaluados} alumnos.
