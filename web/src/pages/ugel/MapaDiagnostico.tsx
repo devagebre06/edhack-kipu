@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, CircleMarker, GeoJSON, Popup, Tooltip } from 'react-leaflet'
+import { MapContainer, CircleMarker, GeoJSON, Popup, Tooltip, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
+import { latLngBounds, point } from 'leaflet'
 import type { Feature, Geometry } from 'geojson'
 import type { Map as LeafletMap, Layer, Polygon, PathOptions } from 'leaflet'
 import { useMapa, useProfesores } from '@/hooks'
@@ -10,8 +11,37 @@ import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } 
 import type { MapaBucket, MapaColegio, MapaDistribution, ProfesorResumen } from '@/types'
 import distritosGeo from '@/data/distritos-ugel06.json'
 
-// Centro aproximado de la UGEL 06 (Ate / La Molina / Cieneguilla).
-const CENTER: [number, number] = [-12.06, -76.9]
+// La vista y sus límites se calculan con los mismos seis distritos dibujados.
+const DISTRICT_BOUNDS = latLngBounds(
+  distritosGeo.features.flatMap(({ geometry }) =>
+    geometry.coordinates.flatMap(ring => ring.map(([longitude, latitude]) => [latitude, longitude] as [number, number])),
+  ),
+)
+const MAP_LIMITS = DISTRICT_BOUNDS.pad(0.12)
+
+function DistrictMapLimits() {
+  const map = useMap()
+
+  useEffect(() => {
+    const padding: [number, number] = [24, 24]
+    const fitDistricts = () => {
+      map.setMinZoom(map.getBoundsZoom(DISTRICT_BOUNDS, false, point(48, 48)))
+      map.fitBounds(DISTRICT_BOUNDS, { padding })
+    }
+    map.setMaxBounds(MAP_LIMITS)
+    fitDistricts()
+
+    const onResize = () => {
+      const atOverview = map.getZoom() <= map.getMinZoom()
+      map.setMinZoom(map.getBoundsZoom(DISTRICT_BOUNDS, false, point(48, 48)))
+      if (atOverview) map.fitBounds(DISTRICT_BOUNDS, { padding })
+    }
+    map.on('resize', onResize)
+    return () => { map.off('resize', onResize) }
+  }, [map])
+
+  return null
+}
 const COURSES = [
   { key: 'all', label: 'Ambos cursos' },
   { key: 'matematica', label: 'Matemática' },
@@ -191,9 +221,8 @@ export default function MapaDiagnostico() {
   const cajaRef = useRef<HTMLDivElement | null>(null)
   const { data, isLoading } = useMapa(course)
 
-  // Leaflet calcula su tamaño al montar: si el contenedor cambia de ancho
-  // (colapsar la barra lateral, redimensionar la ventana) hay que avisarle, o
-  // quedan franjas sin teselas y el centro se desplaza.
+  // Leaflet necesita actualizar el tamaño al colapsar la barra lateral o
+  // redimensionar la ventana; el límite de zoom se recalcula en el mapa.
   useEffect(() => {
     const caja = cajaRef.current
     if (!caja) return
@@ -278,16 +307,10 @@ export default function MapaDiagnostico() {
 
       <Section title="Mapa por colegio">
         <div ref={cajaRef} className="relative overflow-hidden rounded-lg border">
-          <MapContainer ref={mapRef} className="kipu-diagnostic-map" center={CENTER} zoom={11} minZoom={10} maxZoom={18} style={{ height: 'clamp(620px, 68vh, 760px)', width: '100%' }} scrollWheelZoom>
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {/* Polígonos de distrito: con datos reales o todos; ocultos en "Demo".
-                Click en un distrito → zoom a esa sección. */}
-            {source !== 'demo' && (
-              <GeoJSON data={distritosGeo as never} style={distritoStyle} onEachFeature={makeOnEachDistrito(() => mapRef.current)} />
-            )}
+          <MapContainer ref={mapRef} className="kipu-diagnostic-map" bounds={DISTRICT_BOUNDS} maxBounds={MAP_LIMITS} maxBoundsViscosity={1} maxZoom={18} style={{ height: 'clamp(620px, 68vh, 760px)', width: '100%' }} scrollWheelZoom>
+            <DistrictMapLimits />
+            {/* Límites distritales y colegios sobre un fondo limpio. */}
+            <GeoJSON data={distritosGeo as never} style={distritoStyle} onEachFeature={makeOnEachDistrito(() => mapRef.current)} />
             {conCoords.map((c) => (
               <CircleMarker
                 key={c.school_key}

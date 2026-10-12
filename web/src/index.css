@@ -240,9 +240,9 @@
   }
 }
 
-/* Atenúa solo el mapa base: los puntos y distritos conservan sus colores. */
-.kipu-diagnostic-map .leaflet-tile-pane {
-  filter: grayscale(100%) brightness(1.08) contrast(0.88);
+/* Fondo limpio para que destaquen los límites distritales y los colegios. */
+.kipu-diagnostic-map {
+  background: var(--muted);
 }
 
 /* Etiqueta de distrito sobre el mapa (tooltip permanente sin caja). */
