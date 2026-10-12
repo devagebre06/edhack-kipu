@@ -75,6 +75,8 @@ const NO_DISTRICT = '#94a3b8' // slate para distrito no reconocido
 // Normaliza acentos, guiones y el sufijo "-Chosica" a la clave canónica.
 const normDistrict = (s: string | null | undefined) =>
   (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[–—]/g, '-').replace(/\s*-\s*CHOSICA/, '').trim()
+const districtColor = (district: string | null | undefined) => DISTRICT_PALETTE[normDistrict(district)] ?? NO_DISTRICT
+type MapView = 'performance' | 'locations'
 type LocatedSchool = MapaColegio & { latitude: number; longitude: number }
 const hasCoordinates = (school: MapaColegio): school is LocatedSchool =>
   school.latitude != null && school.longitude != null
@@ -249,7 +251,7 @@ function SchoolDetails({ school, demo }: { school: LocatedSchool; demo: LocatedS
       <Tooltip direction="top" opacity={1}>
         <div className="min-w-[185px]">
           <div className="font-semibold">{school.school_name}</div>
-          <div className="mb-1 text-[11px] text-gray-500">Desempeño simulado · 4.º de primaria</div>
+          <div className="mb-1 text-[11px] text-gray-500">Desempeño simulado · secciones de 4.º combinadas</div>
           {levels.map((level) => (
             <div key={level} className="flex justify-between gap-4 text-xs">
               <span>{BUCKET_LABEL[level]}</span>
@@ -261,7 +263,7 @@ function SchoolDetails({ school, demo }: { school: LocatedSchool; demo: LocatedS
       <Popup>
         <div className="min-w-[205px] space-y-1.5">
           <div className="font-semibold">{school.school_name}</div>
-          <div className="text-xs text-gray-500">Ubicación real · desempeño simulado de 4.º</div>
+          <div className="text-xs text-gray-500">Ubicación real · desempeño simulado de las secciones de 4.º</div>
           <div className="text-xs">{school.district} · {demo.total_students} evaluaciones de muestra</div>
           <DistBar distribution={demo.distribution} />
           <ul className="text-xs">
@@ -280,6 +282,7 @@ function SchoolDetails({ school, demo }: { school: LocatedSchool; demo: LocatedS
 
 export default function MapaDiagnostico() {
   const [course, setCourse] = useState('all')
+  const [mapView, setMapView] = useState<MapView>('performance')
   const mapRef = useRef<LeafletMap | null>(null)
   const cajaRef = useRef<HTMLDivElement | null>(null)
   const { data, isLoading } = useMapa(course)
@@ -305,31 +308,55 @@ export default function MapaDiagnostico() {
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">Mapa diagnóstico — UGEL 06</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Ubicaciones reales de colegios en los seis distritos. Las donas muestran resultados simulados de 4.º de primaria.
+            {mapView === 'performance'
+              ? 'Ubicaciones reales de colegios en los seis distritos. Las donas muestran resultados simulados de 4.º de primaria.'
+              : 'Ubicaciones reales de colegios en los seis distritos de la UGEL 06.'}
           </p>
         </header>
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Label className="text-muted-foreground">Curso</Label>
-            <Select value={course} onValueChange={setCourse}>
-              <SelectTrigger size="sm" aria-label="Filtrar por curso" className="w-auto">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COURSES.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div role="group" aria-label="Vista del mapa" className="inline-flex rounded-lg border bg-card p-1 text-sm">
+            {([
+              ['performance', 'Desempeño'],
+              ['locations', 'Solo ubicaciones'],
+            ] as const).map(([view, label]) => (
+              <button key={view} type="button" aria-pressed={mapView === view} onClick={() => setMapView(view)}
+                className={`rounded-md px-3 py-1.5 transition-colors ${mapView === view ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
+                {label}
+              </button>
+            ))}
           </div>
+          {mapView === 'performance' && (
+            <div className="flex items-center gap-2">
+              <Label className="text-muted-foreground">Curso</Label>
+              <Select value={course} onValueChange={setCourse}>
+                <SelectTrigger size="sm" aria-label="Filtrar por curso" className="w-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COURSES.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-4">
+      <div className={`mt-6 grid gap-4 ${mapView === 'performance' ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <Stat label="Colegios ubicados" value={schools.length} />
         <Stat label="Distritos" value={DISTRICT_ORDER.length} />
-        <Stat label="Colegios con muestra" value={results.size} />
+        {mapView === 'performance' && <Stat label="Colegios con muestra" value={results.size} />}
       </div>
 
       <Section title="Mapa por colegio">
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label="Colores de los distritos">
+          <span className="font-medium">Distritos</span>
+          {DISTRICT_ORDER.map((district) => (
+            <span key={district} className="inline-flex items-center gap-1">
+              <span className="size-2.5 rounded-full" style={{ background: DISTRICT_PALETTE[district] }} />
+              {DISTRICT_LABEL[district]}
+            </span>
+          ))}
+        </div>
         <div ref={cajaRef} className="relative overflow-hidden rounded-lg border">
           <MapContainer ref={mapRef} className="kipu-diagnostic-map" bounds={DISTRICT_BOUNDS} maxBounds={MAP_LIMITS} maxBoundsViscosity={1} maxZoom={18} zoomSnap={0.25} zoomDelta={0.5} style={{ height: 'clamp(620px, 68vh, 760px)', width: '100%' }} scrollWheelZoom>
             <DistrictMapLimits />
@@ -340,6 +367,14 @@ export default function MapaDiagnostico() {
             {/* El mapa base queda atenuado; los distritos y colegios conservan su color. */}
             <GeoJSON data={distritosGeo as never} style={distritoStyle} onEachFeature={makeOnEachDistrito(() => mapRef.current)} />
             {schools.map((school) => {
+              if (mapView === 'locations') return (
+                <CircleMarker key={school.school_key} center={[school.latitude, school.longitude]} radius={5}
+                  pathOptions={{ color: '#fff', weight: 1, fillColor: districtColor(school.district), fillOpacity: 0.85 }}>
+                  <Tooltip direction="top">
+                    <strong>{school.school_name}</strong> · {school.district}
+                  </Tooltip>
+                </CircleMarker>
+              )
               const demo = results.get(school.school_key)
               return demo ? (
                 <Marker key={school.school_key} position={[school.latitude, school.longitude]} icon={donutIcon(demo.distribution)}>
@@ -353,25 +388,15 @@ export default function MapaDiagnostico() {
               )
             })}
           </MapContainer>
-          <div className="absolute bottom-4 left-4 z-[1000] rounded-lg border bg-card/95 p-3 text-xs text-card-foreground shadow-md backdrop-blur-sm">
-            <div className="mb-1.5 font-semibold">Distritos</div>
-            <ul className="space-y-1">
-              {DISTRICT_ORDER.map((d) => (
-                <li key={d} className="flex items-center gap-2">
-                  <span className="size-3 rounded-sm" style={{ background: DISTRICT_PALETTE[d] }} />
-                  <span>{DISTRICT_LABEL[d]}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-1.5 border-t pt-1.5 text-muted-foreground">Dona: desempeño simulado · Punto gris: sin muestra</div>
-          </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Mostrando {schools.length} ubicaciones reales · {results.size} con resultados sintéticos asignados para la demostración.
-          {' '}Estos resultados no representan el desempeño real de los colegios.
+          {mapView === 'performance'
+            ? `Mostrando ${schools.length} ubicaciones reales · ${results.size} donas con resultados sintéticos; los puntos grises no tienen muestra. Estos resultados no representan el desempeño real de los colegios.`
+            : `Mostrando ${schools.length} ubicaciones reales de colegios, sin datos de desempeño.`}
         </p>
       </Section>
 
+      {mapView === 'performance' && <>
       <Section title="Docentes destacados · scoring y contexto">
         {profesores?.profesores.length ? (
           <div className="space-y-3">
@@ -420,6 +445,7 @@ export default function MapaDiagnostico() {
           ))}
         </div>
       </Section>
+      </>}
     </div>
   )
 }

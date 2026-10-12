@@ -16,7 +16,7 @@ const TIPOS = [
 ]
 
 const dictadoLabel = (d: Dictado) =>
-  `${d.curso?.nombre ?? 'Curso'} · ${[d.aula?.grado, d.aula?.seccion].filter(Boolean).join(' ') || d.aula?.nombre || 'Aula'}${d.periodo ? ` · ${d.periodo.nombre}` : ''}`
+  `${d.curso?.nombre ?? 'Curso'} · ${[d.aula?.grado, d.aula?.seccion].filter(Boolean).join(' ') || d.aula?.nombre || 'Aula'}`
 
 export default function TeacherUpload() {
   const profile = useProfile()
