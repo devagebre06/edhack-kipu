@@ -240,6 +240,11 @@
   }
 }
 
+/* Atenúa solo el mapa base: los puntos y distritos conservan sus colores. */
+.kipu-diagnostic-map .leaflet-tile-pane {
+  filter: grayscale(100%) brightness(1.08) contrast(0.88);
+}
+
 /* Etiqueta de distrito sobre el mapa (tooltip permanente sin caja). */
 .leaflet-tooltip.distrito-label {
   background: transparent;

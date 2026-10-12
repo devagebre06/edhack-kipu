@@ -278,7 +278,7 @@ export default function MapaDiagnostico() {
 
       <Section title="Mapa por colegio">
         <div ref={cajaRef} className="relative overflow-hidden rounded-lg border">
-          <MapContainer ref={mapRef} center={CENTER} zoom={11} minZoom={10} maxZoom={18} style={{ height: 480, width: '100%' }} scrollWheelZoom>
+          <MapContainer ref={mapRef} className="kipu-diagnostic-map" center={CENTER} zoom={11} minZoom={10} maxZoom={18} style={{ height: 'clamp(620px, 68vh, 760px)', width: '100%' }} scrollWheelZoom>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
               url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
