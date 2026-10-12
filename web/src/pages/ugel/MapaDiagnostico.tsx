@@ -280,8 +280,8 @@ export default function MapaDiagnostico() {
         <div ref={cajaRef} className="relative overflow-hidden rounded-lg border">
           <MapContainer ref={mapRef} center={CENTER} zoom={11} minZoom={10} maxZoom={18} style={{ height: 480, width: '100%' }} scrollWheelZoom>
             <TileLayer
-              attribution='&copy; OpenStreetMap &copy; CARTO'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             {/* Polígonos de distrito: con datos reales o todos; ocultos en "Demo".
                 Click en un distrito → zoom a esa sección. */}
