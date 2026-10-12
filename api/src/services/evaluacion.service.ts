@@ -1,8 +1,6 @@
 // Configuración pública del método que realmente ejecuta la API.
-import { GEMINI_MODEL, PROMPT_VERSION, RUBRIC_VERSION, VALID_SCORE_MIN, MAX_MB, ALLOWED } from '../config/env.ts'
+import { GEMINI_MODEL, GEMINI_FALLBACK_MODEL, PROMPT_VERSION, RUBRIC_VERSION, VALID_SCORE_MIN, MAX_MB, ALLOWED } from '../config/env.ts'
 import { CRITERIOS, PUNTAJE_MAX, PUNTAJE_MINIMO, DOC_KEYS, ID_KEYS } from './analysis/rubric.ts'
-import { promptExtraccion } from './analysis/extraction.service.ts'
-import { promptContexto } from './analysis/context.service.ts'
 import { systemPromptRubrica, promptEvaluacion } from './analysis/evaluation.service.ts'
 
 const DOC = '«aquí va el documento del docente, convertido a texto»'
@@ -13,6 +11,8 @@ export function getConfiguracionEvaluacion() {
     motor: {
       modelo: GEMINI_MODEL,
       modelo_docs: `https://ai.google.dev/gemini-api/docs/models/${GEMINI_MODEL}`,
+      modelo_respaldo: GEMINI_FALLBACK_MODEL,
+      modelo_respaldo_docs: `https://ai.google.dev/gemini-api/docs/models/${GEMINI_FALLBACK_MODEL}`,
       prompt_version: PROMPT_VERSION,
       rubrica_version: RUBRIC_VERSION,
       formatos: Object.keys(ALLOWED),
@@ -30,13 +30,13 @@ export function getConfiguracionEvaluacion() {
       },
       {
         clave: 'extraccion', titulo: 'Se identifica el contenido', etiqueta: 'Extracción', quien: 'IA',
-        descripcion: 'Se identifican los datos y componentes presentes antes de valorarlos. No se inventa información faltante.',
+        descripcion: 'En una sola consulta, la IA identifica los datos y componentes presentes y valora el documento. No se inventa información faltante.',
         entrada: 'Documento en texto', salida: 'Datos identificados y legibilidad', aplica: ['UNIDAD', 'SESION'],
-        devuelve: { documentos: [...DOC_KEYS], identificacion: [...ID_KEYS] }, prompts: ['extraccion'],
+        devuelve: { documentos: [...DOC_KEYS], identificacion: [...ID_KEYS] }, prompts: ['evaluacion'],
       },
       {
         clave: 'evaluacion', titulo: 'Se aplican los ocho criterios', etiqueta: 'Valoración', quien: 'IA',
-        descripcion: 'El modelo valora cada criterio de 0 a 3 y señala la evidencia. Si es una sesión, su relación con la unidad se considera dentro del criterio de coherencia.',
+        descripcion: 'En la misma consulta, el modelo valora cada criterio de 0 a 3 y señala la evidencia. Si es una sesión, su relación con la unidad se considera dentro del criterio de coherencia.',
         entrada: 'Documento, contexto y rúbrica curricular', salida: 'Ocho valoraciones con evidencia y mejoras',
         aplica: ['UNIDAD', 'SESION'], prompts: ['rubrica', 'evaluacion'],
       },
@@ -48,9 +48,9 @@ export function getConfiguracionEvaluacion() {
       },
       {
         clave: 'contexto', titulo: 'Se guarda el contexto', etiqueta: 'Contexto', quien: 'IA',
-        descripcion: 'Se resume el contenido de la unidad o sesión para seguimiento. El resumen no impone un segundo requisito para aprobar.',
+        descripcion: 'El resumen se genera junto con la evaluación y se guarda para seguimiento. No impone un segundo requisito para aprobar.',
         entrada: 'Documento en texto', salida: 'Área, título, temas, grado y periodo',
-        aplica: ['UNIDAD', 'SESION'], prompts: ['contexto'],
+        aplica: ['UNIDAD', 'SESION'], prompts: ['evaluacion'],
       },
     ],
     decisiones: [
@@ -77,9 +77,7 @@ export function getConfiguracionEvaluacion() {
     },
     prompts: [
       { clave: 'rubrica', titulo: 'Rúbrica curricular', cuando: 'Instrucción de sistema para valorar la planificación.', texto: systemPromptRubrica() },
-      { clave: 'evaluacion', titulo: 'Mensaje de evaluación', cuando: 'Añade el contexto y el documento del docente.', texto: promptEvaluacion(EJEMPLO, '«datos extraídos»', DOC) },
-      { clave: 'extraccion', titulo: 'Extracción previa', cuando: 'Primer paso, antes de calificar.', texto: promptExtraccion(DOC) },
-      { clave: 'contexto', titulo: 'Contexto de contenido', cuando: 'Resume el tema de la entrega.', texto: promptContexto(EJEMPLO, DOC) },
+      { clave: 'evaluacion', titulo: 'Mensaje de evaluación', cuando: 'Identifica, valora y resume el documento en una sola consulta.', texto: promptEvaluacion(EJEMPLO, DOC) },
     ],
   }
 }

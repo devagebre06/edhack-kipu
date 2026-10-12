@@ -6,7 +6,7 @@
 //
 //   · Áreas: MATEMÁTICA (4 competencias) y COMUNICACIÓN (3 competencias).
 //   · Escala de logro: C · B · A · AD (validación de datos de la hoja).
-//   · Cabecera del acta: Docente · Grado (1°-6°) · Sección (A-F) · Turno (Mañana/Tarde).
+//   · Cabecera del acta: Docente · Grado (4° en esta PoC) · Sección (A-F) · Turno (Mañana/Tarde).
 //   · Nómina de hasta 40 alumnos por aula (filas 12-51 de la hoja).
 //   · Consolidado: conteo de alumnos por nivel de logro × competencia y su
 //     porcentaje (hojas "CONSOLIDADO DE LOGROS").
@@ -41,7 +41,7 @@ const ESCALA = { C: 'En inicio', B: 'En proceso', A: 'Logro esperado', AD: 'Logr
 const CODIGO_POR_VALOR = { 1: 'C', 2: 'B', 3: 'A', 4: 'AD' }
 const VALOR_POR_CODIGO = { C: 1, B: 2, A: 3, AD: 4 }
 const NIVELES = ['C', 'B', 'A', 'AD']
-const GRADOS = ['1°', '2°', '3°', '4°', '5°', '6°']
+const GRADOS = ['4°']
 const TURNOS = ['Mañana', 'Tarde']
 
 // Línea de tiempo del año escolar. El diagnóstico es la foto inicial (la

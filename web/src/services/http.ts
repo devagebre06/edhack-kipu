@@ -33,7 +33,7 @@ async function request<T>(path: string, init: RequestInit, reintento = false): P
     const { data, error } = await supabase.auth.refreshSession()
     if (!error && data.session) return request<T>(path, init, true)
     await supabase.auth.signOut()
-    location.assign('/')
+    location.assign(import.meta.env.BASE_URL)
     throw new HttpError(401, 'Tu sesión expiró. Vuelve a iniciar sesión.')
   }
 

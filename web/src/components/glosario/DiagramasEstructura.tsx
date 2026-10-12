@@ -9,7 +9,7 @@ export function AnatomiaAula() {
       <div className="rounded-lg border p-3">
         <div className="flex flex-wrap items-center gap-2">
           {[
-            { et: 'Grado', v: '1°', nota: '1° a 6°' },
+            { et: 'Grado', v: '4°', nota: '4.º de primaria' },
             { et: 'Sección', v: 'A', nota: 'A a F' },
             { et: 'Turno', v: 'Mañana', nota: 'o tarde' },
           ].map((x) => (
@@ -20,7 +20,7 @@ export function AnatomiaAula() {
             </div>
           ))}
           <span className="text-muted-foreground">=</span>
-          <span className="rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground">1° A · Mañana</span>
+          <span className="rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground">4° A · Mañana</span>
         </div>
         <div className="mt-3 grid gap-1.5 text-xs sm:grid-cols-3">
           {[

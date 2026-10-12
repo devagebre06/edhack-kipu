@@ -108,7 +108,7 @@ export function OrigenAlerta() {
 /** Qué guarda la evidencia de una alerta. */
 export function EvidenciaAlerta() {
   const campos = [
-    ['aula', '3° B · Mañana'],
+    ['aula', '4° B · Mañana'],
     ['periodo', 'Bimestre 4'],
     ['alumnos', '30'],
     ['en_inicio', '9 (30%)'],

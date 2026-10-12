@@ -4,11 +4,23 @@
 import type express from 'express'
 import { db, audit } from '../infra/supabase.ts'
 import { getUser } from '../middleware/auth.ts'
-import { WINDOW_BEFORE_MIN } from '../config/env.ts'
-import { zonedNow } from '../utils/time.ts'
 import { processUpload, validateFile } from '../services/artifact.service.ts'
 
 const TIPOS = ['UNIDAD', 'SESION']
+
+function respondProcessingError(res: express.Response, error: any) {
+  const detail = String(error?.message || error)
+  const overloaded = /^gemini 503(?:\s|:)/.test(detail)
+  const quotaExceeded = /^gemini 429(?:\s|:)/.test(detail)
+  res.status(overloaded ? 503 : quotaExceeded ? 429 : 500).json({
+    error: overloaded
+      ? 'Gemini está temporalmente ocupado. Reintenta esta entrega en unos minutos.'
+      : quotaExceeded
+        ? 'Los modelos de Gemini alcanzaron su cuota disponible. Reintenta más tarde.'
+        : 'No se pudo procesar el documento. Intenta nuevamente.',
+    detail,
+  })
+}
 
 // Deriva curso/grado (para el análisis) de un dictado con sus joins.
 function subjectGrade(dictado: any) {
@@ -45,20 +57,6 @@ export async function createArtifact(req: express.Request, res: express.Response
       .select('id, dictado_id, dictados(id, profesor_id, cursos(nombre), aulas(grado, seccion))').eq('id', unidad_id).single() as any
     if (!unidad || unidad.dictados?.profesor_id !== profile.id) return res.status(400).json({ error: 'La unidad seleccionada no es válida' })
 
-    // Ventana de subida de la sesión: según los horarios de su dictado hoy.
-    const now = new Date()
-    const { weekday, hm } = zonedNow(now)
-    const { data: horarios } = await db.from('horarios').select('dia_semana, hora_inicio, hora_fin').eq('dictado_id', unidad.dictado_id).eq('dia_semana', weekday)
-    const inWindow = (horarios || []).some((h: any) => {
-      const start = new Date(`2000-01-01T${h.hora_inicio}`)
-      start.setMinutes(start.getMinutes() - WINDOW_BEFORE_MIN)
-      return hm >= start.toTimeString().slice(0, 5) && hm <= String(h.hora_fin).slice(0, 5)
-    })
-    if (!inWindow) {
-      await audit(profile.id, 'UPLOAD_OUT_OF_WINDOW', 'dictado', unidad.dictado_id, { at: now.toISOString() })
-      return res.status(403).json({ error: `Fuera de la ventana de subida. Las sesiones solo pueden subirse desde ${WINDOW_BEFORE_MIN} minutos antes del inicio de tu clase hasta su término.` })
-    }
-
     const { data: [sesion], error: sErr } = await db.from('sesiones').insert({ unidad_id, nombre: String(nombre).trim() }).select() as any
     if (sErr) throw sErr
     const { data: [evidencia] } = await db.from('evidencias').insert({ sesion_id: sesion.id, profesor_id: profile.id }).select() as any
@@ -66,7 +64,7 @@ export async function createArtifact(req: express.Request, res: express.Response
     return res.json(await processUpload(profile, req.file!, evidencia, { kind: 'SESION', parentUnitId: unidad_id, ...subjectGrade(unidad.dictados) }, 1))
   } catch (e: any) {
     console.error(e)
-    res.status(500).json({ error: 'No se pudo procesar el documento. Intenta nuevamente.', detail: String(e.message || e) })
+    respondProcessingError(res, e)
   }
 }
 
@@ -128,6 +126,6 @@ export async function createArtifactVersion(req: express.Request, res: express.R
     res.json(await processUpload(profile, req.file!, evidencia, { kind, parentUnitId, ...subjectGrade(dictado) }, evidencia.version_actual + 1, prevEval ? JSON.stringify(prevEval) : undefined))
   } catch (e: any) {
     console.error(e)
-    res.status(500).json({ error: 'No se pudo procesar el documento. Intenta nuevamente.', detail: String(e.message || e) })
+    respondProcessingError(res, e)
   }
 }

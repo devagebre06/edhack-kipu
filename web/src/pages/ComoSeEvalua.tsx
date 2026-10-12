@@ -274,6 +274,10 @@ export default function ComoSeEvalua() {
           exactas que recibe la IA. Nada de esto es secreto — si un resultado no
           {docente ? ' te cuadra' : ' cuadra'}, aquí está el porqué.
         </p>
+        <p className="mt-3 max-w-[80ch] text-sm text-muted-foreground">
+          Modelo principal: <strong className="text-foreground">{motor.modelo}</strong>. Si está saturado o agota su cuota,
+          se prueba <strong className="text-foreground">{motor.modelo_respaldo}</strong> como respaldo, con los mismos criterios.
+        </p>
       </header>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -464,7 +468,7 @@ export default function ComoSeEvalua() {
           <CardContent>
             <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
               {[
-                ['Modelo', (
+                ['Modelo principal', (
                   <a
                     key="modelo"
                     href={motor.modelo_docs}
@@ -473,6 +477,17 @@ export default function ComoSeEvalua() {
                     className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-primary"
                   >
                     {motor.modelo} <ExternalLink className="size-3" />
+                  </a>
+                )],
+                ['Modelo de respaldo', (
+                  <a
+                    key="modelo_respaldo"
+                    href={motor.modelo_respaldo_docs}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-primary"
+                  >
+                    {motor.modelo_respaldo} <ExternalLink className="size-3" />
                   </a>
                 )],
                 ['Versión de la rúbrica', motor.rubrica_version],
@@ -488,6 +503,11 @@ export default function ComoSeEvalua() {
                 </div>
               ))}
             </dl>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Si el modelo principal sigue ocupado (503), se prueba el respaldo después de los reintentos.
+              Si agota su cuota (429), se prueba el respaldo de inmediato. En condiciones normales,
+              cada entrega requiere una consulta a Gemini y registra qué modelo produjo el resultado.
+            </p>
             <p className="mt-3 text-xs text-muted-foreground">
               La evaluación con IA siempre queda sujeta a revisión humana: acompaña la mirada del especialista, no la
               reemplaza.

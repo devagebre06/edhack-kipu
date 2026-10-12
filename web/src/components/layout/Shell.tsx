@@ -61,7 +61,7 @@ export function Shell({ profile, children }: { profile: Profile; children: React
                 {initials(profile.full_name)}
               </span>
               <button
-                onClick={() => auth.signOut().finally(() => location.assign('/'))}
+                onClick={() => auth.signOut().finally(() => location.assign(import.meta.env.BASE_URL))}
                 title="Cerrar sesión"
                 aria-label="Cerrar sesión"
                 className="grid size-8 place-items-center rounded-md text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
@@ -78,7 +78,7 @@ export function Shell({ profile, children }: { profile: Profile; children: React
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium leading-tight text-sidebar-foreground">{profile.full_name}</div>
                 <button
-                  onClick={() => auth.signOut().finally(() => location.assign('/'))}
+                  onClick={() => auth.signOut().finally(() => location.assign(import.meta.env.BASE_URL))}
                   className="mt-0.5 inline-flex items-center gap-1 text-xs text-sidebar-foreground/55 transition-colors hover:text-sidebar-foreground"
                 >
                   <LogOut className="size-3" />

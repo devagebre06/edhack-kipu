@@ -1,5 +1,5 @@
 // Seed demo Kipu (modelo unificado). Crea lo que la data ugel_06 no trae:
-// roles, periodos ordinarios, 1 director por colegio, 1 especialista UGEL,
+// roles, periodos ordinarios, 1 director, 1 especialista UGEL,
 // cuentas Auth, y contenido operativo de muestra (unidades/sesiones/evidencias/
 // evaluaciones/contextos_ia + alertas) para que la app tenga qué mostrar.
 // Ejecutar DESPUÉS de db:poblacion (usa colegios/dictados ya migrados).
@@ -18,7 +18,9 @@ if (evId.length) {
   await db.from('evidencia_versiones').delete().in('evidencia_id', evId)
 }
 await db.from('evidencias').delete().eq('es_sintetico', true)
-await db.from('contextos_ia').delete().not('unidad_id', 'is', null)   // contextos de seed (por unidad)
+const { data: unidadesSeed } = await db.from('unidades').select('id').eq('es_sintetico', true)
+const idsUnidadesSeed = (unidadesSeed ?? []).map(u => u.id)
+if (idsUnidadesSeed.length) await db.from('contextos_ia').delete().in('unidad_id', idsUnidadesSeed)
 await db.from('sesiones').delete().eq('es_sintetico', true)
 await db.from('unidades').delete().eq('es_sintetico', true)
 await db.from('alertas').delete().eq('es_sintetico', true)
@@ -64,112 +66,56 @@ const directorId = await ensureAuthUser('director@kipu.demo', PASS)
   if (error) throw new Error(`director@kipu.demo: ${error.message}`)
 }
 
-// ── Contenido operativo de muestra sobre los primeros dictados ───────────────
-// Genera una Ficha de monitoreo UGEL 06 SINTÉTICA (misma forma que produce el
-// analizador real: 17 ítems por dimensión con evidencia + recomendación, 5
-// desempeños, extracción, puntajes). Espejo de api/src/services/analysis/rubric.ts.
-const ITEMS = [
-  ['A', 'Informe psicopedagógico y PEP de estudiantes con discapacidad'], ['A', 'Caracterización de la población estudiantil'],
-  ['B', 'Organización de los propósitos de aprendizaje'], ['B', 'Uso de materiales y recursos educativos'], ['B', 'Evaluación para y del aprendizaje'],
-  ['C', 'Coherencia interna de la unidad'], ['C', 'Situación significativa'], ['C', 'Criterios de evaluación'], ['C', 'Secuencia de sesiones'],
-  ['C', 'Evidencias de aprendizaje'], ['C', 'Instrumento de evaluación'], ['C', 'Prevención ante emergencias/desastres'],
-  ['D', 'Coherencia con la unidad didáctica'], ['D', 'Enfoque del área y propósito'], ['D', 'Acompañamiento socioemocional'],
-  ['D', 'Uso de materiales del MINEDU'], ['D', 'Atención a la diversidad'],
+// ── Evaluaciones sintéticas para unidades y sesiones ─────────────────────────
+// Mantener los nombres y referencias alineados con analysis/rubric.ts. Estas
+// fichas son ejemplos de interfaz: no se ha enviado un documento a Gemini.
+const CRITERIOS = [
+  { nombre: 'Alineación curricular', fuente: 'CNEB: competencias, capacidades y estándar del IV ciclo; Programa Curricular: desempeños de 4.º.', evidencia: 'Se relaciona la competencia con el propósito de aprendizaje.', recomendacion: 'Precisar cómo se vincula el propósito con el estándar del IV ciclo.' },
+  { nombre: 'Pertinencia para 4.º grado y enfoque del área', fuente: 'CNEB: estándar del IV ciclo; Programa Curricular: enfoque y desempeños de Comunicación o Matemática.', evidencia: 'Las actividades se plantean para 4.º de primaria desde el enfoque del área.', recomendacion: 'Ajustar la demanda de las actividades al desempeño esperado para 4.º.' },
+  { nombre: 'Coherencia de la planificación', fuente: 'CNEB: planificación desde situaciones significativas; Programa Curricular: propósito, contexto y necesidades; Oficio UGEL 06: ítems generales 6, 7 y 13.', evidencia: 'El propósito, las actividades y la evidencia guardan relación entre sí.', recomendacion: 'Explicar la relación entre el propósito y la evidencia propuesta.' },
+  { nombre: 'Secuencia y demanda cognitiva', fuente: 'CNEB: aprender haciendo y pensamiento complejo; Programa Curricular: enfoque del área; Oficio UGEL 06: secuencia de sesiones y enfoque (ítems 9 y 14).', evidencia: 'La secuencia avanza de la exploración a la resolución y explicación.', recomendacion: 'Incluir una actividad que exija justificar los procedimientos.' },
+  { nombre: 'Evidencia y criterios de evaluación', fuente: 'CNEB y Programa Curricular: evidencia vinculada a competencia, estándar y desempeño; Oficio UGEL 06: ítems 8 y 10.', evidencia: 'La evidencia permite observar el aprendizaje previsto.', recomendacion: 'Formular criterios observables vinculados a esa evidencia.' },
+  { nombre: 'Evaluación y retroalimentación', fuente: 'CNEB y Programa Curricular: evaluación formativa e instrumentos; Oficio UGEL 06: instrumento pertinente (ítem 11), sin exigir uno específico.', evidencia: 'Se prevé recoger información y dar retroalimentación durante la actividad.', recomendacion: 'Indicar cuándo y cómo se dará retroalimentación formativa.' },
+  { nombre: 'Atención a la diversidad', fuente: 'CNEB y Programa Curricular: contextualización y apoyos; Oficio UGEL 06: atención diferenciada (ítem 17).', evidencia: 'Se prevén apoyos para estudiantes con distintos ritmos de aprendizaje.', recomendacion: 'Precisar los apoyos o ajustes según las necesidades del grupo.' },
+  { nombre: 'Claridad y viabilidad', fuente: 'CNEB y Programa Curricular: recursos pertinentes; Oficio UGEL 06: coherencia y materiales (ítems generales 6 y 16).', evidencia: 'Las indicaciones y los recursos permiten desarrollar la actividad.', recomendacion: 'Aclarar los recursos y el tiempo previsto para cada actividad.' },
 ]
-const DESEMPENOS = [
-  'Involucra activamente a los estudiantes en el proceso de aprendizaje',
-  'Promueve el razonamiento, la creatividad y/o el pensamiento crítico',
-  'Evalúa el progreso de los aprendizajes para retroalimentar y adecuar la enseñanza',
-  'Propicia un ambiente de respeto y proximidad',
-  'Regula positivamente el comportamiento de los estudiantes',
-]
-const EXCLUDED = new Set([1, 2, 3, 4, 5, 11])
-const PUNTAJE = { LOGRADO: 3, PROCESO: 2, INICIO: 1, NO_EVIDENCIADO: null, NO_APLICA: null }
-// Contenido por ítem aplicable. Los ítems 8 (criterios de evaluación) y 10
-// (evidencias de aprendizaje) llevan variante ok/bad: ahí vive la retroalimentación formativa.
-const ITEM_CONTENT = {
-  6: { ev: 'La unidad articula competencia, situación significativa y secuencia de sesiones sobre fracciones.', rec: 'Verificar que cada sesión aporte a la evidencia final.' },
-  7: { ev: '"Repartir una pizza en partes iguales entre los estudiantes del aula" como contexto retador.', rec: 'Conectar la situación con un problema real de la comunidad.' },
-  8: { ok: { v: 'PROCESO', ev: 'Se enuncian criterios de evaluación alineados a la competencia.', rec: 'Explicitar descriptores por cada nivel de logro.' },
-       bad: { v: 'INICIO', ev: 'Los criterios de evaluación se mencionan de forma general, sin descriptores por nivel.', rec: 'Redactar criterios observables con descriptores por nivel (Inicio/Proceso/Logrado) para poder retroalimentar al estudiante.' } },
-  9: { ev: 'Secuencia de 4 sesiones con progresión de lo concreto a lo simbólico.', rec: 'Prever una sesión de consolidación antes de la evaluación.' },
-  10: { ok: { v: 'LOGRADO', ev: 'La evidencia de aprendizaje (resolución de problemas con fracciones) permite valorar el logro.', rec: 'Acompañar la evidencia con retroalimentación descriptiva.' },
-        bad: { v: 'INICIO', ev: 'No se define con claridad la evidencia de aprendizaje ni cómo se retroalimentará al estudiante durante el proceso.', rec: 'Definir la evidencia y los momentos de retroalimentación formativa (no solo al final).' } },
-  12: { ev: 'La unidad incluye medidas de prevención ante sismos en el aula.', rec: '' },
-  13: { ev: 'La sesión guarda coherencia con el propósito de la unidad.', rec: '' },
-  14: { ev: 'El enfoque de resolución de problemas del área es explícito.', rec: '' },
-  15: { ev: 'Se prevén momentos de acompañamiento socioemocional al inicio.', rec: 'Incluir una estrategia de autorregulación.' },
-  16: { ev: 'Se emplean los cuadernos de trabajo del MINEDU.', rec: '' },
-  17: { ev: 'Se contemplan adaptaciones para estudiantes con distinto ritmo.', rec: 'Detallar la adaptación para un caso específico.' },
-}
-const DESEMP_CONTENT = {
-  1: { ev: 'La sesión prevé preguntas para activar saberes previos.', rec: '' },
-  2: { ev: 'Se plantean problemas que exigen justificar procedimientos.', rec: 'Incluir preguntas de metacognición.' },
-  3: { ok: { v: 'LOGRADO', ev: 'La sesión prevé momentos de retroalimentación descriptiva sobre el uso de fracciones.', rec: 'Registrar evidencias de la retroalimentación entregada.' },
-       bad: { v: 'INICIO', ev: 'La sesión no prevé retroalimentación formativa: no se describe cómo se informará al estudiante sobre su avance.', rec: 'Incorporar retroalimentación descriptiva durante el proceso, no solo una nota al final.' } },
-  4: { ev: 'Se prevén acuerdos de convivencia para el trabajo en equipo.', rec: '' },
-  5: { ev: 'Se anticipan estrategias de regulación del comportamiento.', rec: '' },
-}
 
-// `variacion` degrada esa cantidad de ítems aplicables (LOGRADO→PROCESO→INICIO)
-// de forma determinista, para que no todas las fichas den el mismo puntaje: el
-// evaluador real nunca produce dos idénticas. La ficha queda coherente porque
-// puntaje, promedio, nivel y decisión se recalculan a partir de los ítems.
-function mkEval(aprobada, variacion = 0) {
-  const items = ITEMS.map(([dimension, nombre], i) => {
-    const numero = i + 1
-    if (EXCLUDED.has(numero)) return { numero, dimension, nombre, valoracion: 'NO_APLICA', puntaje: null, evidencia: 'Ítem excluido de la evaluación', recomendacion: '', excluido: true }
-    const c = ITEM_CONTENT[numero]
-    const variant = c.ok ? (aprobada ? c.ok : c.bad) : null
-    const valoracion = variant ? variant.v : (aprobada ? 'LOGRADO' : 'PROCESO')
-    return { numero, dimension, nombre, valoracion, puntaje: PUNTAJE[valoracion], evidencia: variant ? variant.ev : c.ev, recomendacion: variant ? variant.rec : c.rec, excluido: false }
-  })
-  if (variacion > 0) {
-    const idx = items.map((it, i) => (it.puntaje !== null ? i : -1)).filter((i) => i >= 0)
-    for (let k = 0; k < variacion && k < idx.length; k++) {
-      const it = items[idx[(k * 5 + variacion * 3) % idx.length]]
-      if (it.valoracion === 'LOGRADO') { it.valoracion = 'PROCESO'; it.puntaje = PUNTAJE.PROCESO }
-      else if (it.valoracion === 'PROCESO') { it.valoracion = 'INICIO'; it.puntaje = PUNTAJE.INICIO }
-    }
+function mkEval(aprobada, variacion = 0, tipo = 'unidad de aprendizaje') {
+  const puntajes = CRITERIOS.map(() => aprobada ? 3 : 2)
+  for (let k = 0; k < Math.min(variacion, CRITERIOS.length); k++) {
+    const indice = (k * 3 + variacion) % CRITERIOS.length
+    puntajes[indice]--
   }
-  const aplicables = items.filter((it) => it.puntaje !== null)
-  const puntaje_total = aplicables.reduce((s, it) => s + it.puntaje, 0)
-  const puntaje_max = aplicables.length * 3
-  const promedio = Math.round((puntaje_total / aplicables.length) * 100) / 100
-  const nivel_global = promedio >= 2.34 ? 'LOGRADO' : promedio >= 1.67 ? 'PROCESO' : 'INICIO'
-  const overall = Math.round((puntaje_total / puntaje_max) * 100)
-  const desempenos = DESEMPENOS.map((nombre, i) => {
-    const n = i + 1, c = DESEMP_CONTENT[n]
-    const variant = c.ok ? (aprobada ? c.ok : c.bad) : null
-    return { numero: n, nombre, valoracion: variant ? variant.v : (aprobada ? 'LOGRADO' : 'PROCESO'), evidencia_diseno: variant ? variant.ev : c.ev, recomendacion: variant ? variant.rec : c.rec }
-  })
-  const ficha = {
-    version: 'ficha-monitoreo-ugel06.v1',
-    extraccion: {
-      legible: true, observaciones: '',
-      documentos_presentes: { insumos: false, planificacion_anual: true, unidad_didactica: true, sesion_aprendizaje: true, instrumentos_evaluacion: aprobada },
-      identificacion: { nivel: 'Primaria', area: 'Matemática', competencia: 'Resuelve problemas de cantidad', unidad: aprobada ? 'Unidad 1' : 'Unidad 2', ie: 'No consignado', docente: 'No consignado', grado_seccion: 'No consignado', sesion: 'No consignado' },
-    },
-    items, desempenos, puntaje_total, puntaje_max, promedio, nivel_global,
-    recomendaciones_priorizadas: aprobada
-      ? ['Explicitar los descriptores de cada nivel de logro en la rúbrica.', 'Compartir los criterios de evaluación con los estudiantes al inicio de la unidad.']
-      : ['Incorporar criterios de evaluación con descriptores por nivel (ítem C-3).', 'Prever momentos de retroalimentación formativa durante las sesiones (Desempeño 3).', 'Diseñar un instrumento de evaluación alineado a las evidencias.'],
-    compromisos_docente: ['Rediseñar la matriz de evaluación con descriptores por nivel.', 'Registrar evidencias de la retroalimentación entregada en cada sesión.'],
-    compromisos_especialista: ['Acompañar en el diseño de instrumentos de evaluación formativa.', 'Realizar una visita de monitoreo en aula el próximo mes.'],
-  }
-  const decision = nivel_global === 'LOGRADO' ? 'APPROVED' : 'NEEDS_REVISION'
+  const items = CRITERIOS.map((criterio, i) => ({
+    numero: i + 1,
+    nombre: criterio.nombre,
+    fuente: criterio.fuente,
+    puntaje: puntajes[i],
+    nivel: ['Sin evidencia', 'Inicio', 'En proceso', 'Logrado'][puntajes[i]],
+    evidencia: puntajes[i] === 3
+      ? `Ejemplo sintético: ${criterio.evidencia}`
+      : `Ejemplo sintético: se menciona ${criterio.nombre.toLowerCase()}, pero falta sustento o detalle en la planificación.`,
+    recomendacion: puntajes[i] < 3 ? criterio.recomendacion : '',
+  }))
+  const puntaje_total = puntajes.reduce((suma, puntaje) => suma + puntaje, 0)
+  const decision = puntaje_total >= 18 ? 'APPROVED' : 'NEEDS_REVISION'
+  const recomendaciones = items.filter(item => item.puntaje < 3).slice(0, 3).map(item => item.recomendacion)
+  const esSesion = tipo === 'sesión de aprendizaje'
   return {
-    modelo: 'gemini-2.5-flash', decision, puntaje_total: overall, confianza: 0.9,
-    resumen: aprobada
-      ? 'La unidad presenta una situación significativa pertinente y una secuencia de sesiones coherente con el propósito de Matemática. Los criterios de evaluación se alinean a las evidencias de aprendizaje, lo que favorece la retroalimentación formativa. Como siguiente paso, se sugiere explicitar los descriptores de cada nivel de logro. La valoración de la Sección III requiere observación de aula.'
-      : 'La unidad plantea la situación significativa, pero los criterios de evaluación y las evidencias de aprendizaje aún no permiten una retroalimentación formativa clara: no se describe cómo se informará al estudiante sobre su avance. Se recomienda incorporar instrumentos con descriptores por nivel y momentos de retroalimentación durante el proceso. La valoración de la Sección III requiere observación de aula.',
-    fortalezas: aprobada
-      ? ['Situación significativa contextualizada a fracciones', 'Secuencia de sesiones coherente con el propósito', 'Criterios de evaluación alineados a las evidencias']
-      : ['Propósito de aprendizaje claramente definido', 'Uso de material concreto para el trabajo con fracciones'],
-    mejoras: aprobada
-      ? ['Explicitar descriptores por nivel de logro']
-      : ['Definir criterios de evaluación con descriptores por nivel', 'Incluir momentos explícitos de retroalimentación formativa', 'Diseñar un instrumento de evaluación con niveles de logro'],
-    criterios: ficha,
+    modelo: 'demo-sintetica', prompt_version: 'demo-sintetica', rubrica_version: 'planificacion-4primaria.v1',
+    decision, puntaje_total: Math.round(100 * puntaje_total / 24), confianza: 0,
+    resumen: `Ejemplo sintético de ${tipo}: la planificación escrita ${decision === 'APPROVED' ? 'alcanza' : 'aún no alcanza'} el umbral de 75/100. La práctica en aula requiere observación.`,
+    fortalezas: ['Propósito de aprendizaje identificado', 'Actividades relacionadas con la competencia'],
+    mejoras: recomendaciones,
+    criterios: {
+      version: 'planificacion-4primaria.v1', tipo,
+      extraccion: {
+        legible: true, observaciones: 'Contenido sintético de demostración',
+        documentos_presentes: { insumos: false, planificacion_anual: false, unidad_didactica: !esSesion, sesion_aprendizaje: esSesion, instrumentos_evaluacion: false },
+        identificacion: { nivel: 'Primaria', area: 'Matemática', competencia: 'Resuelve problemas de cantidad', grado_seccion: '4.º de primaria', unidad: 'Unidad de ejemplo', sesion: esSesion ? 'Sesión de ejemplo' : '' },
+      },
+      items, puntaje_total, puntaje_max: 24, recomendaciones_priorizadas: recomendaciones,
+    },
     flags_criticos: [],
   }
 }
@@ -229,7 +175,7 @@ for (const [i, d] of (dictados ?? []).entries()) {
     for (const [k, s] of (sesionesCreadas ?? []).entries()) {
       if ((i + b + k) % 3 === 2) continue
       const okSesion = (i + b + k) % 4 !== 1
-      const evalSesion = mkEval(okSesion, (i + b * 2 + k * 3) % 6)
+      const evalSesion = mkEval(okSesion, (i + b * 2 + k * 3) % 6, 'sesión de aprendizaje')
       const { data: [evS] } = await db.from('evidencias')
         .insert({ sesion_id: s.id, profesor_id: d.profesor_id, estado: evalSesion.decision, version_actual: 1, es_sintetico: true }).select()
       const { data: [vS] } = await db.from('evidencia_versiones').insert({

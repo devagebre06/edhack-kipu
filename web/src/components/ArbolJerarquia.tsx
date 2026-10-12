@@ -27,8 +27,8 @@ const ARBOL: Nodo = {
           label: 'ANGELITOS DE MARIA',
           sub: 'colegio · Cieneguilla',
           hijos: [
-            { label: '1° A · Mañana', sub: 'aula', hijos: [{ label: '33 alumnos', sub: 'matriculados' }] },
-            { label: '1° B · Mañana', sub: 'aula', hijos: [{ label: '29 alumnos', sub: 'matriculados' }] },
+            { label: '4° A · Mañana', sub: 'aula', hijos: [{ label: '33 alumnos', sub: 'matriculados' }] },
+            { label: '4° B · Mañana', sub: 'aula', hijos: [{ label: '29 alumnos', sub: 'matriculados' }] },
           ],
         },
         { label: 'PAMPAS TINAJAS', sub: '+ 13 colegios más', tenue: true },

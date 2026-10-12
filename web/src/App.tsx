@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HOME } from '@/config/constants'
 import { useAuth, ProfileProvider, ThemeProvider, useTheme } from '@/hooks'
@@ -34,6 +34,8 @@ import Glosario from '@/pages/Glosario'
 import ComoSeEvalua from '@/pages/ComoSeEvalua'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } })
+// GitHub Pages no reescribe rutas internas; el hash mantiene la navegación al recargar.
+const Router = import.meta.env.BASE_URL === '/' ? BrowserRouter : HashRouter
 
 /** Renderiza `element` solo si el rol coincide; si no, redirige al home del rol. */
 function guard(role: Role, allowed: Role, element: React.ReactNode) {
@@ -60,7 +62,7 @@ function AppInner() {
   return (
     <QueryClientProvider client={qc}>
       <ProfileProvider value={profile}>
-        <BrowserRouter>
+        <Router>
           <Shell profile={profile}>
             <Routes>
               {/* Profesor */}
@@ -97,7 +99,7 @@ function AppInner() {
               <Route path="*" element={<Navigate to={HOME[role]} />} />
             </Routes>
           </Shell>
-        </BrowserRouter>
+        </Router>
         <Toaster theme={theme} />
       </ProfileProvider>
     </QueryClientProvider>

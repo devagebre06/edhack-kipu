@@ -7,7 +7,7 @@ import { UserX } from 'lucide-react'
 // un perfil: la cuenta no tiene fila en `profiles`, o la sesión guardada quedó
 // inválida (falla el refresh del token) y RLS devuelve 0 filas.
 export default function SessionError() {
-  const reset = () => auth.signOut().finally(() => location.assign('/'))
+  const reset = () => auth.signOut().finally(() => location.assign(import.meta.env.BASE_URL))
   return (
     <div className="grid min-h-screen place-items-center bg-background p-8">
       <div className="w-full max-w-sm text-center">

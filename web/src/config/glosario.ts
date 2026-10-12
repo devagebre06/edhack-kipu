@@ -116,7 +116,7 @@ export const GLOSARIO: GrupoGlosario[] = [
       },
       {
         termino: 'Aula',
-        definicion: 'Un grupo concreto de estudiantes: grado (1° a 6°), sección (A a F) y turno (mañana o tarde). La misma nómina se evalúa en las dos áreas.',
+        definicion: 'Un grupo concreto de estudiantes de 4.º de primaria: sección (A a F) y turno (mañana o tarde). La misma nómina se evalúa en las dos áreas.',
         grafico: 'aula',
         icono: 'Users',
         donde: 'Fichas de docente y alumno · grupos con calificaciones preocupantes.',

@@ -8,7 +8,7 @@ import type {} from 'multer'
 import { db, audit } from '../infra/supabase.ts'
 import { GEMINI_MODEL, PROMPT_VERSION, RUBRIC_VERSION, ALLOWED, VALID_SCORE_MIN } from '../config/env.ts'
 import { toMarkdown } from './markdown.service.ts'
-import { evaluate, summarizeContext, type ArtifactContext } from './analysis/index.ts'
+import { evaluate } from './analysis/index.ts'
 
 export function validateFile(file?: Express.Multer.File) {
   if (!file) return 'Falta el archivo'
@@ -19,6 +19,13 @@ export function validateFile(file?: Express.Multer.File) {
 
 // Evidencia: { id, unidad_id | sesion_id, profesor_id }. meta: { kind, subject, grade, parentUnitId? }.
 export interface EvidenciaMeta { kind: 'UNIDAD' | 'SESION'; subject: string; grade: string; parentUnitId?: string | null }
+
+async function saveContext(context: object, evidencia: any) {
+  const target = evidencia.unidad_id ? { unidad_id: evidencia.unidad_id } : { sesion_id: evidencia.sesion_id }
+  const onConflict = evidencia.unidad_id ? 'unidad_id' : 'sesion_id'
+  const { error } = await db.from('contextos_ia').upsert({ ...target, contexto: context }, { onConflict })
+  if (error) throw new Error(`guardar contexto: ${error.message}`)
+}
 
 export async function processUpload(
   profile: any,
@@ -69,11 +76,10 @@ export async function processUpload(
   const invalidReason: string | null = legible
     ? (isValid ? null : `El puntaje (${score}/100) no alcanza el mínimo de ${VALID_SCORE_MIN} para contar como válida.`)
     : 'El documento está vacío o no se pudo leer su contenido; queda sin calificar.'
-  let context: ArtifactContext | null = null
-
-  if (legible) {
+  // El contexto ya llegó con la valoración: guardarlo no consume otra consulta a Gemini.
+  if (legible && 'context' in evaluation && evaluation.context) {
     try {
-      context = await summarizeContext(markdown, { type: kindLabel, subject: meta.subject, grade: meta.grade })
+      await saveContext(evaluation.context, evidencia)
     } catch (e) {
       console.error('context summary failed', e)
     }
@@ -83,16 +89,12 @@ export async function processUpload(
   await db.from('evidencia_versiones').update({ estado, markdown, es_valida: isValid, motivo_invalidez: invalidReason }).eq('id', ver.id)
   await db.from('evidencias').update({ estado, version_actual: version, updated_at: new Date().toISOString() }).eq('id', evidencia.id)
   await db.from('evaluaciones').insert({
-    version_id: ver.id, modelo: GEMINI_MODEL, prompt_version: PROMPT_VERSION, rubrica_version: RUBRIC_VERSION,
+    version_id: ver.id, modelo: 'model' in evaluation ? evaluation.model : GEMINI_MODEL,
+    prompt_version: PROMPT_VERSION, rubrica_version: RUBRIC_VERSION,
     decision: estado, puntaje_total: evaluation.overall_score, confianza: evaluation.confidence, resumen: evaluation.summary,
     fortalezas: evaluation.strengths, mejoras: evaluation.improvements, criterios: evaluation.criteria, flags_criticos: evaluation.criticalFlags,
   })
 
-  if (context) {
-    const target = evidencia.unidad_id ? { unidad_id: evidencia.unidad_id } : { sesion_id: evidencia.sesion_id }
-    const onConflict = evidencia.unidad_id ? 'unidad_id' : 'sesion_id'
-    await db.from('contextos_ia').upsert({ ...target, contexto: context }, { onConflict })
-  }
   await audit(profile.id, 'EVIDENCIA_EVALUADA', 'evidencia', evidencia.id, { version, decision: estado, score: evaluation.overall_score, is_valid: isValid })
   // Devuelve la evaluación en la forma de dominio del front (overall_score, no puntaje_total).
   return {

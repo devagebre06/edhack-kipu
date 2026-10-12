@@ -51,7 +51,7 @@ metáfora del quipu, y datos agregados por defecto para UGEL.
 - **API** (`api/`): Express 5 + TypeScript ejecutado con `tsx` (sin build), `zod`
   para validar la salida de la IA, `multer` para uploads en memoria.
 - **Datos/Auth/Storage**: Supabase (Postgres + Auth + Storage, bucket privado `evidence`).
-- **IA**: Google Gemini (`gemini-3.7-flash`) vía REST con `responseSchema` JSON.
+- **IA**: Google Gemini (`gemini-3.8-flash`) vía REST con `responseSchema` JSON.
 - **Conversión de documentos**: `markitdown` (subproceso Python), PDF/PPTX/XLSX → Markdown.
 
 ### Despliegue

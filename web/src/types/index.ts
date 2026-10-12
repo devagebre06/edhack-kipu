@@ -633,6 +633,8 @@ export type ConfigEvaluacion = {
     modelo: string
     /** Ficha técnica pública del modelo. */
     modelo_docs: string
+    modelo_respaldo: string
+    modelo_respaldo_docs: string
     prompt_version: string
     rubrica_version: string
     formatos: string[]

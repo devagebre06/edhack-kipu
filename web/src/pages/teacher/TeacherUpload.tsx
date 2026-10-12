@@ -194,10 +194,6 @@ export default function TeacherUpload() {
             </label>
           </div>
 
-          {isSession && (
-            <p className="text-xs text-muted-foreground">Las sesiones solo pueden subirse desde 30 min antes del inicio de tu clase hasta su término.</p>
-          )}
-
           {error && (
             <Alert variant="destructive" role="alert">
               <AlertCircle />
@@ -209,7 +205,7 @@ export default function TeacherUpload() {
             {busy ? 'Procesando…' : 'Enviar evidencia'}
           </Button>
 
-          {busy && <Spinner text="Convirtiendo el documento y evaluando con los criterios pedagógicos. Esto toma menos de un minuto." />}
+          {busy && <Spinner text="Convirtiendo y evaluando el documento. Puede tardar algunos minutos; no cierres esta página." />}
         </form>
       )}
 
@@ -234,7 +230,8 @@ export default function TeacherUpload() {
             {motor && (
               <span className="mt-2 flex flex-wrap gap-1.5">
                 {[
-                  `Modelo ${motor.modelo}`,
+                  `Modelo principal ${motor.modelo}`,
+                  `Respaldo ${motor.modelo_respaldo}`,
                   `Rúbrica ${motor.rubrica_version}`,
                   `Mínimo ${motor.puntaje_minimo_valida}/100`,
                   `${motor.formatos.join(' · ')} hasta ${motor.max_mb} MB`,
@@ -261,10 +258,10 @@ export default function TeacherUpload() {
       </div>
 
       <div className="mt-4 rounded-xl border bg-card p-4 text-sm shadow-xs">
-        <h3 className="font-semibold">¿Qué subir y cuándo?</h3>
+        <h3 className="font-semibold">¿Qué subir?</h3>
         <ul className="mt-2 space-y-1 text-muted-foreground">
           <li><span className="font-medium text-foreground">Unidad de aprendizaje</span> — al inicio de cada mes escolar. Debe subirse antes que sus sesiones.</li>
-          <li><span className="font-medium text-foreground">Sesión de clase</span> — el mismo día, dentro de la ventana horaria y ligada a una unidad ya subida.</li>
+          <li><span className="font-medium text-foreground">Sesión de clase</span> — puedes subirla en cualquier momento, vinculada a una unidad ya subida.</li>
         </ul>
         <Separator className="my-3" />
         <Button variant="link" size="sm" className="h-auto p-0" onClick={() => navigate('/profesor/calendario')}>

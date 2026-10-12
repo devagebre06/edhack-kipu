@@ -48,7 +48,7 @@ salen del backend.
 | Web | Vite 8 · React 19 · TypeScript · Tailwind v4 · React Router 7 · TanStack Query 5 · supabase-js · Recharts · react-leaflet · `xlsx` |
 | API | Node + Express 5 · TypeScript (ejecutado con `tsx`, sin build) · `zod` · `multer` · `@supabase/supabase-js` |
 | Datos | Supabase: Postgres + Auth (JWT) + Storage (bucket privado `evidence`) |
-| IA | Google Gemini `gemini-3.7-flash` vía REST (`generateContent` + `responseSchema`) |
+| IA | Google Gemini `gemini-3.8-flash` vía REST (`generateContent` + `responseSchema`) |
 | Conversión | `markitdown` (CLI Python) PDF/PPTX/XLSX → Markdown |
 
 ## 2. Modelo de dominio
@@ -60,7 +60,7 @@ salen del backend.
 
 | Tipo | Significado |
 |---|---|
-| `DAILY_SESSION` | Sesión de clase. Se liga a una unidad (`unit_id`) y valida ventana horaria. |
+| `DAILY_SESSION` | Sesión de clase. Se liga a una unidad (`unit_id`) del docente. |
 | `MONTHLY_UNIT` | Unidad de aprendizaje mensual. Cubre uno o varios grupos (`unit_groups`). |
 | `BIMONTHLY_GRADES` | Notas bimestrales. |
 | `ANNUAL_GRADE_SUMMARY` | Consolidado anual de notas. |
@@ -101,7 +101,7 @@ alert_status    = NEW | UNDER_REVIEW | DISMISSED | ESCALATED | RESOLVED
 | `profiles` | `id`→auth.users, `full_name`, `role`, `institution_id`, `dni`→ugel06_profesor *(005)* | Perfil de usuario. |
 | `subjects` | `institution_id`, `name` | Cursos por institución. |
 | `student_groups` | `institution_id`, `grade`, `name` | Secciones (p. ej. 4°A). |
-| `class_schedules` | `teacher_id`, `subject_id`, `group_id`, `weekday` (0=dom), `start_time`, `end_time` | Horario; base de la ventana de subida. |
+| `class_schedules` | `teacher_id`, `subject_id`, `group_id`, `weekday` (0=dom), `start_time`, `end_time` | Horario de clases; no restringe la subida de sesiones. |
 | `artifacts` | `teacher_id`, `institution_id`, `subject_id`, `group_id`, `type`, `status`, `current_version`, `name` *(003)*, `unit_id`→artifacts *(003)* | Evidencia; `unit_id` es auto-referencia (sesión→unidad). |
 | `artifact_versions` | `artifact_id`, `version`, `original_filename`, `storage_path`, `sha256`, `markdown`, `status`, `is_valid` *(006)*, `invalid_reason` *(006)*; `unique(artifact_id, version)` | Versión inmutable. |
 | `evaluations` | `artifact_version_id`, `model_name`, `prompt_version`, `rubric_version`, `decision`, `overall_score` (0–100), `confidence`, `summary`, `strengths/improvements/criteria/critical_flags` (jsonb) | Salida de IA persistida. |
@@ -187,13 +187,10 @@ router en `/api`, health en `/health`. Rutas montadas en
 | `POST` | `/api/v1/horarios/link` | director | Enlaza/desenlaza un docente con un profesor UGEL 06 por DNI. |
 | `DELETE` | `/api/v1/horarios/:id` | director | Borra un horario de la institución. |
 
-`createArtifact` ([artifacts.controller.ts](../api/src/controllers/artifacts.controller.ts)),
-además, valida para `DAILY_SESSION`: (1) **ventana horaria** — debe existir un
-horario del docente para ese grupo hoy, y `zonedNow()` (zona `America/Lima`, ver
-[utils/time.ts](../api/src/utils/time.ts)) debe caer entre `start_time −
-WINDOW_BEFORE_MIN` y `end_time`; fuera de ventana audita `UPLOAD_OUT_OF_WINDOW` y
-responde 403. (2) **enlace a unidad** — la `unit_id` debe ser una `MONTHLY_UNIT`
-del mismo docente que cubra el grupo.
+`createArtifact` ([artifacts.controller.ts](../api/src/controllers/artifacts.controller.ts))
+valida para `DAILY_SESSION` que la unidad vinculada pertenezca al docente.
+La sesión puede subirse en cualquier momento; el horario de clases no bloquea
+la entrega.
 
 ### Respuesta del pipeline
 
@@ -232,8 +229,8 @@ por request**, sin cola ni worker:
    (error de conversión/eval → version+artifact = PROCESSING_ERROR, throw)
 5. si es sesión: se pasa el contexto de su unidad al evaluador
 6. isValid = legible && decision == APPROVED && score >= 75
-7. si legible: context = summarizeContext(markdown, {...})
-   (fallo aquí es best-effort: se loguea, NO tumba la subida)
+7. si legible: se guarda el contexto incluido en la misma respuesta de evaluate
+   (fallo al guardarlo es best-effort: se loguea, NO tumba la subida)
 8. update artifact_versions {status, markdown, is_valid, invalid_reason}
    update artifacts {status, current_version, updated_at}
    insert evaluations {model_name, prompt_version, rubric_version, ...}
@@ -257,9 +254,9 @@ POST https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateCon
 → parse candidates[0].content.parts[0].text  (JSON forzado por responseSchema)
 ```
 
-El pipeline de análisis hace **tres llamadas** por documento legible:
+El pipeline de análisis hace **una llamada a Gemini** por documento legible en condiciones normales. La respuesta reúne extracción, valoración y contexto. Si el modelo principal devuelve 429 o 503, se prueba el modelo de respaldo; los 503 pueden generar reintentos.
 
-### 7.1 Extracción (`extract`)
+### 7.1 Extracción (en la respuesta de `evaluate`)
 Identifica qué documentos están presentes (insumos, planificación anual, unidad,
 sesión, instrumentos) y extrae datos de identificación (IE, docente, área, grado,
 competencia…) + flag `legible`. Markdown truncado a 60k chars. Schema validado
@@ -267,7 +264,7 @@ con Zod (`ExtractionSchema`).
 
 ### 7.2 Evaluación (`evaluate`)
 El system prompt vigente es `api/config/prompts/planificacion-4primaria.v1.md`
-(`PROMPT_VERSION = v3`, `RUBRIC_VERSION = planificacion-4primaria.v1`).
+(`PROMPT_VERSION = v4`, `RUBRIC_VERSION = planificacion-4primaria.v1`).
 La **rúbrica propia de Kipu** tiene ocho criterios generales basados en el CNEB,
 el Programa Curricular de Educación Primaria y los elementos generales del Oficio
 Múltiple N.º 00038-2026 de la UGEL 06. Sirve solo para unidades y sesiones de
@@ -291,9 +288,8 @@ muestra sin nota, aunque la columna numérica existente almacene 0 como centinel
 Devuelve `{ decision, confidence, summary, overall_score, strengths[],
 improvements[], criteria (la ficha completa), criticalFlags[] }`.
 
-### 7.3 Contexto (`summarizeContext`)
-[context.service.ts](../api/src/services/analysis/context.service.ts):
-- `summarizeContext` resume **de qué trata realmente el contenido** (área, título, resumen 2–4 frases, temas, grado, periodo) — se guarda en `artifact_contexts`.
+### 7.3 Contexto (en la respuesta de `evaluate`)
+- La misma respuesta resume **de qué trata realmente el contenido** (área, título, resumen 2–4 frases, temas, grado, periodo) y se guarda en `artifact_contexts` sin otra llamada a Gemini.
 - El contexto guardado de la unidad se proporciona al evaluador de una sesión para valorar su coherencia dentro del criterio 3. Ya no hay una llamada posterior que invalide por separado la sesión.
 
 La rúbrica (ocho criterios, escala, umbral y schemas Zod) vive en
@@ -364,9 +360,9 @@ máquinas de estado, cursos/grados permitidos) en `config/constants.ts`.
 Shell del rol. Sin fila de perfil → `SessionError` (cierra sesión y reintenta).
 
 **Subida de sesión** (docente):
-1. `TeacherUpload`: elige tipo + clase (hoy) + unidad + archivo; valida en cliente.
+1. `TeacherUpload`: elige tipo + unidad vinculada + archivo; valida en cliente.
 2. `useSubmitArtifact` → `api.llm.evaluateArtifact(FormData)` → `POST /api/v1/artifacts` con Bearer.
-3. Backend valida ventana horaria y enlace a unidad → `processUpload` (§6).
+3. Backend valida el enlace a una unidad del docente → `processUpload` (§6).
 4. Respuesta con score + validez → invalida queries → UI refresca. Si no válida, muestra `invalid_reason`.
 
 **Reenvío/corrección**: desde una entrega `NEEDS_REVISION` → `reevaluateVersion`
@@ -383,9 +379,7 @@ trigger escribe en `audit_logs` con `{from, to}` y actor.
 | Var | Default | Rol |
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | — (obligatorias) | Cliente service-role. |
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | — / `gemini-3.7-flash` | IA. |
-| `TIMEZONE` | `America/Lima` | Cálculo día/hora de la ventana de subida. |
-| `SESSION_UPLOAD_WINDOW_BEFORE_MINUTES` | `30` | Minutos antes del inicio en que se admite la sesión. |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL` | — / `gemini-3.8-flash` / `gemini-3.6-flash` | IA; respaldo ante saturación 503 o cuota 429 del modelo principal. |
 | `MAX_UPLOAD_SIZE_MB` | `15` | Límite de multer. |
 | `PORT` | `3001` | Puerto de la API. |
 | `SUPABASE_DB_URL` | — | Cadena Postgres (Session pooler) para el script de migración. |

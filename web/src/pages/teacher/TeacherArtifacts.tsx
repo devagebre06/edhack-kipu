@@ -27,6 +27,7 @@ export default function TeacherArtifacts() {
   const filtered = statusFilter ? list.filter(a => a.status === statusFilter) : list
   const { total, approved, revision } = countByStatus(list)
   const busy = submitArtifact.isPending
+  const retryingProcessingError = list.some(a => a.id === resubmitFor && a.status === 'PROCESSING_ERROR')
 
   const resubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,11 +61,13 @@ export default function TeacherArtifacts() {
 
       {resubmitFor && (
         <form onSubmit={resubmit} className="mt-5 space-y-3 rounded-xl border border-warning/30 bg-warning-muted p-4 shadow-xs">
-          <p className="text-sm font-medium">Subiendo corrección para la entrega seleccionada. La versión anterior se conserva.</p>
+          <p className="text-sm font-medium">{retryingProcessingError
+            ? 'Reintentando la entrega seleccionada. El intento anterior se conserva.'
+            : 'Subiendo corrección para la entrega seleccionada. La versión anterior se conserva.'}</p>
           <div className="flex items-center gap-3">
             <input type="file" required accept=".pdf,.pptx,.xlsx" onChange={e => setFile(e.target.files?.[0] || null)}
-              className="flex-1 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-warning file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-warning-foreground" />
-            <Button disabled={busy || !file}>{busy ? 'Enviando…' : 'Enviar corrección'}</Button>
+              className="min-w-0 flex-1 text-sm file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground file:transition-colors hover:file:bg-primary/85" />
+            <Button disabled={busy || !file}>{busy ? 'Enviando…' : retryingProcessingError ? 'Reintentar entrega' : 'Enviar corrección'}</Button>
             <Button type="button" variant="ghost" onClick={() => setResubmitFor(null)}>Cancelar</Button>
           </div>
           {error && (
@@ -125,9 +128,9 @@ export default function TeacherArtifacts() {
                       {ev ? <EvaluationView ev={ev} prev={prevEv} /> : (
                         <p className="text-sm text-muted-foreground">Sin evaluación disponible.</p>
                       )}
-                      {a.status === 'NEEDS_REVISION' && !resubmitFor && (
+                      {(a.status === 'NEEDS_REVISION' || a.status === 'PROCESSING_ERROR') && !resubmitFor && (
                         <Button className="mt-4" onClick={() => { setResubmitFor(a.id); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-                          Subir corrección
+                          {a.status === 'PROCESSING_ERROR' ? 'Reintentar entrega' : 'Subir corrección'}
                         </Button>
                       )}
                       {versions.length > 1 && (

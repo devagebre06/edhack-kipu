@@ -216,7 +216,7 @@ export function ActaDiagnostica() {
   return (
     <figure className="mt-3 overflow-hidden rounded-lg border">
       <div className="flex items-center gap-2 border-b bg-muted/50 px-3 py-1.5 text-[11px] text-muted-foreground">
-        <span className="font-medium text-foreground">Acta · 1° A · Matemática</span>
+        <span className="font-medium text-foreground">Acta · 4° A · Matemática</span>
         <span className="ml-auto">C1 · C2 · C3 · C4</span>
       </div>
       <table className="w-full text-[11px]">

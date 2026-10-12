@@ -59,7 +59,7 @@ export function latestContext(a: Artifact): ArtifactContext | undefined {
   return chosen?.context
 }
 
-/** Aula/sección legible de la evidencia ("3° A"), o "—" si no hay. */
+/** Aula/sección legible de la evidencia ("4° A"), o "—" si no hay. */
 export function classroomName(a: Artifact): string {
   const g = a.student_groups
   return g ? `${g.grade} ${g.name}`.trim() : '—'
