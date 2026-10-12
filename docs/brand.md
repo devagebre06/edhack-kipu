@@ -2,7 +2,7 @@
 
 **Nombre**: Kipu, del quechua *quipu*: el sistema andino de cuerdas y nudos usado para registrar información con precisión y memoria.
 
-**Tagline**: *Trazabilidad pedagógica que acompaña.*
+**Lema**: *Trazabilidad pedagógica a gran escala*
 
 ## Concepto
 

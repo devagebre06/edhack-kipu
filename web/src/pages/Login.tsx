@@ -32,7 +32,7 @@ export default function Login() {
         <Logo light size={28} />
         <div className="relative">
           <h1 className="max-w-md text-3xl font-semibold leading-tight tracking-tight">
-            Trazabilidad pedagógica que acompaña.
+            Trazabilidad pedagógica a gran escala
           </h1>
           <p className="mt-4 max-w-md text-sidebar-foreground/75">
             Cada evidencia que registras es un nudo en la cuerda: retroalimentación inmediata para ti,

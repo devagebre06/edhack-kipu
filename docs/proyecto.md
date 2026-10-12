@@ -2,7 +2,7 @@
 
 > **Referencia histórica.** Este documento conserva detalles de una versión anterior, incluidas direcciones de despliegue. Para la demo actual y la entrega, consultar [README](../README.md) y [entrega-poc.md](entrega-poc.md).
 
-> Trazabilidad pedagógica que acompaña. MVP para el hackathon UGEL 06 (Perú).
+> Trazabilidad pedagógica a gran escala. MVP para el hackathon UGEL 06 (Perú).
 > Última actualización: 2026-07-19.
 
 ## 1. Qué es
