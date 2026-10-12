@@ -249,6 +249,28 @@
   opacity: 0.5;
 }
 
+/* Cada dona muestra la proporción de estudiantes en los tres niveles. */
+.kipu-performance-icon {
+  border: 0;
+  background: transparent;
+}
+.kipu-performance-donut {
+  position: relative;
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 5px rgb(15 23 42 / 35%);
+}
+.kipu-performance-donut::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: #fff;
+}
+
 /* Etiqueta de distrito sobre el mapa (tooltip permanente sin caja). */
 .leaflet-tooltip.distrito-label {
   background: transparent;

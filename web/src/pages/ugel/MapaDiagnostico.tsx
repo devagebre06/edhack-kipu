@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, CircleMarker, GeoJSON, Popup, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Marker, GeoJSON, Popup, Tooltip, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { latLngBounds, point } from 'leaflet'
+import { divIcon, latLngBounds, point } from 'leaflet'
 import type { Feature, Geometry } from 'geojson'
 import type { Map as LeafletMap, Layer, Polygon, PathOptions } from 'leaflet'
 import { useMapa, useProfesores } from '@/hooks'
@@ -52,7 +52,8 @@ const COURSES = [
   { key: 'comunicacion', label: 'Comunicación' },
 ]
 const BUCKET_ORDER: MapaBucket[] = ['critico', 'intermedio', 'logrado']
-const BUCKET_LABEL: Record<MapaBucket, string> = { critico: 'Crítico', intermedio: 'Intermedio', logrado: 'Logrado' }
+const BUCKET_LABEL: Record<MapaBucket, string> = { critico: 'En inicio', intermedio: 'En proceso', logrado: 'Logrado' }
+const SORTED_BUCKETS: MapaBucket[] = ['logrado', 'intermedio', 'critico']
 
 // ── Distritos de la UGEL 06 ──────────────────────────────────────────────────
 // Paleta por distrito (misma del análisis) y helpers para casar el string de
@@ -71,25 +72,52 @@ const DISTRICT_LABEL: Record<string, string> = {
 }
 const DISTRICT_ORDER = ['ATE', 'CHACLACAYO', 'CIENEGUILLA', 'LA MOLINA', 'LURIGANCHO', 'SANTA ANITA']
 const NO_DISTRICT = '#94a3b8' // slate para distrito no reconocido
-const NO_DATA_COLOR = '#cbd5e1' // gris para colegio sin evaluación (modo logro)
 // Normaliza acentos, guiones y el sufijo "-Chosica" a la clave canónica.
 const normDistrict = (s: string | null | undefined) =>
   (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[–—]/g, '-').replace(/\s*-\s*CHOSICA/, '').trim()
-const districtColor = (d: string | null | undefined) => DISTRICT_PALETTE[normDistrict(d)] ?? NO_DISTRICT
+type LocatedSchool = MapaColegio & { latitude: number; longitude: number }
+const hasCoordinates = (school: MapaColegio): school is LocatedSchool =>
+  school.latitude != null && school.longitude != null
 
-type ColorMode = 'logro' | 'distrito'
-const COLOR_MODES: { key: ColorMode; label: string }[] = [
-  { key: 'logro', label: 'Nivel de logro' },
-  { key: 'distrito', label: 'Distrito' },
-]
+// Asigna cada resultado sintético a una ubicación real libre del mismo distrito.
+// La asociación solo se usa en este mapa y no modifica los datos del colegio.
+function assignDemoResults(schools: MapaColegio[]) {
+  const real = schools.filter((school): school is LocatedSchool => !school.synthetic && hasCoordinates(school))
+  const demo = schools.filter((school): school is LocatedSchool => school.synthetic && school.total_students > 0 && hasCoordinates(school))
+  const available = new Map(real.map((school) => [school.school_key, school]))
+  const results = new Map<string, LocatedSchool>()
 
-// Origen de los colegios a mostrar: reales (MINEDU) vs demo (sintéticos).
-type DataSource = 'todos' | 'reales' | 'demo'
-const DATA_SOURCES: { key: DataSource; label: string }[] = [
-  { key: 'todos', label: 'Todos' },
-  { key: 'reales', label: 'Reales' },
-  { key: 'demo', label: 'Demo (sintéticos)' },
-]
+  for (const sample of [...demo].sort((a, b) => a.school_key.localeCompare(b.school_key))) {
+    const candidates = [...available.values()].filter((school) => normDistrict(school.district) === normDistrict(sample.district))
+    const distance = (school: LocatedSchool) => {
+      const latitude = school.latitude - sample.latitude
+      const longitude = (school.longitude - sample.longitude) * Math.cos(sample.latitude * Math.PI / 180)
+      return latitude * latitude + longitude * longitude
+    }
+    const closest = candidates.reduce<LocatedSchool | null>((best, school) =>
+      !best || distance(school) < distance(best) ? school : best, null)
+    if (!closest) continue
+    results.set(closest.school_key, sample)
+    available.delete(closest.school_key)
+  }
+
+  return { real, results }
+}
+
+const sortedPerformance = (distribution: MapaDistribution) => [...SORTED_BUCKETS]
+  .sort((a, b) => distribution[b].pct - distribution[a].pct)
+
+function donutIcon(distribution: MapaDistribution) {
+  const total = SORTED_BUCKETS.reduce((sum, bucket) => sum + distribution[bucket].count, 0)
+  const startYellow = total ? 100 * distribution.critico.count / total : 0
+  const startGreen = total ? 100 * (distribution.critico.count + distribution.intermedio.count) / total : 0
+  const gradient = `conic-gradient(#D32F2F 0 ${startYellow.toFixed(2)}%, #FBC02D ${startYellow.toFixed(2)}% ${startGreen.toFixed(2)}%, #43A047 ${startGreen.toFixed(2)}% 100%)`
+  return divIcon({
+    className: 'kipu-performance-icon',
+    html: `<span class="kipu-performance-donut" style="background:${gradient}"></span>`,
+    iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14], tooltipAnchor: [0, -14],
+  })
+}
 
 // Estilo de cada polígono de distrito (borde de color, relleno tenue).
 const distritoStyle = (feature?: Feature<Geometry, { distrito: string }>): PathOptions => {
@@ -107,9 +135,6 @@ const makeOnEachDistrito = (getMap: () => LeafletMap | null) =>
       if (map) map.fitBounds((layer as Polygon).getBounds(), { padding: [24, 24] })
     })
   }
-
-// Radio del punto en función del nº de estudiantes evaluados.
-const radiusFor = (total: number) => 8 + Math.min(18, total / 12)
 
 function DistBar({ distribution }: { distribution: MapaDistribution }) {
   return (
@@ -217,10 +242,44 @@ function ProfesorCard({ p }: { p: ProfesorResumen }) {
   )
 }
 
+function SchoolDetails({ school, demo }: { school: LocatedSchool; demo: LocatedSchool }) {
+  const levels = sortedPerformance(demo.distribution)
+  return (
+    <>
+      <Tooltip direction="top" opacity={1}>
+        <div className="min-w-[185px]">
+          <div className="font-semibold">{school.school_name}</div>
+          <div className="mb-1 text-[11px] text-gray-500">Desempeño simulado · 4.º de primaria</div>
+          {levels.map((level) => (
+            <div key={level} className="flex justify-between gap-4 text-xs">
+              <span>{BUCKET_LABEL[level]}</span>
+              <strong>{demo.distribution[level].pct}%</strong>
+            </div>
+          ))}
+        </div>
+      </Tooltip>
+      <Popup>
+        <div className="min-w-[205px] space-y-1.5">
+          <div className="font-semibold">{school.school_name}</div>
+          <div className="text-xs text-gray-500">Ubicación real · desempeño simulado de 4.º</div>
+          <div className="text-xs">{school.district} · {demo.total_students} evaluaciones de muestra</div>
+          <DistBar distribution={demo.distribution} />
+          <ul className="text-xs">
+            {levels.map((level) => (
+              <li key={level} className="flex justify-between gap-3">
+                <span>{BUCKET_LABEL[level]}</span>
+                <span>{demo.distribution[level].count} ({demo.distribution[level].pct}%)</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Popup>
+    </>
+  )
+}
+
 export default function MapaDiagnostico() {
   const [course, setCourse] = useState('all')
-  const [colorMode, setColorMode] = useState<ColorMode>('distrito')
-  const [source, setSource] = useState<DataSource>('reales')
   const mapRef = useRef<LeafletMap | null>(null)
   const cajaRef = useRef<HTMLDivElement | null>(null)
   const { data, isLoading } = useMapa(course)
@@ -238,9 +297,7 @@ export default function MapaDiagnostico() {
 
   if (isLoading || !data) return <Spinner text="Cargando mapa diagnóstico…" />
 
-  const conCoords = data.colegios
-    .filter((c): c is MapaColegio & { latitude: number; longitude: number } => c.latitude != null && c.longitude != null)
-    .filter((c) => source === 'todos' || (source === 'reales' ? !c.synthetic : c.synthetic))
+  const { real: schools, results } = assignDemoResults(data.colegios)
 
   return (
     <div>
@@ -248,33 +305,10 @@ export default function MapaDiagnostico() {
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">Mapa diagnóstico — UGEL 06</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Colegios de la UGEL 06 sobre los seis distritos. El color de cada punto indica{' '}
-            {colorMode === 'logro' ? 'el nivel de logro dominante' : 'el distrito al que pertenece'}.
+            Ubicaciones reales de colegios en los seis distritos. Las donas muestran resultados simulados de 4.º de primaria.
           </p>
         </header>
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Label className="text-muted-foreground">Datos</Label>
-            <Select value={source} onValueChange={(v) => setSource(v as DataSource)}>
-              <SelectTrigger size="sm" aria-label="Origen de datos" className="w-auto">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DATA_SOURCES.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-muted-foreground">Colorear por</Label>
-            <Select value={colorMode} onValueChange={(v) => setColorMode(v as ColorMode)}>
-              <SelectTrigger size="sm" aria-label="Colorear por" className="w-auto">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COLOR_MODES.map((m) => <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="flex items-center gap-2">
             <Label className="text-muted-foreground">Curso</Label>
             <Select value={course} onValueChange={setCourse}>
@@ -290,24 +324,10 @@ export default function MapaDiagnostico() {
       </div>
 
       <div className="mt-6 grid grid-cols-3 gap-4">
-        <Stat label="Colegios" value={data.totals.colegios} />
-        <Stat label="Distritos" value={data.totals.distritos} />
-        <Stat label="Evaluaciones" value={data.totals.evaluaciones} />
+        <Stat label="Colegios ubicados" value={schools.length} />
+        <Stat label="Distritos" value={DISTRICT_ORDER.length} />
+        <Stat label="Colegios con muestra" value={results.size} />
       </div>
-
-      {/* Leyenda de logro (arriba del mapa). En modo distrito la leyenda va
-          como caja sobre el mapa (ver abajo). */}
-      {colorMode === 'logro' && (
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-          {BUCKET_ORDER.map((b) => (
-            <span key={b} className="inline-flex items-center gap-1.5">
-              <span className="size-3 rounded-full" style={{ background: data.buckets[b].color }} />
-              {data.buckets[b].label}
-              <span className="text-muted-foreground">({data.buckets[b].grades.join(', ')})</span>
-            </span>
-          ))}
-        </div>
-      )}
 
       <Section title="Mapa por colegio">
         <div ref={cajaRef} className="relative overflow-hidden rounded-lg border">
@@ -319,69 +339,36 @@ export default function MapaDiagnostico() {
             />
             {/* El mapa base queda atenuado; los distritos y colegios conservan su color. */}
             <GeoJSON data={distritosGeo as never} style={distritoStyle} onEachFeature={makeOnEachDistrito(() => mapRef.current)} />
-            {conCoords.map((c) => (
-              <CircleMarker
-                key={c.school_key}
-                center={[c.latitude, c.longitude]}
-                radius={c.total_students ? radiusFor(c.total_students) : 5}
-                pathOptions={{
-                  color: '#fff',
-                  weight: 1.2,
-                  fillColor: colorMode === 'distrito'
-                    ? districtColor(c.district)
-                    : c.dominant ? data.buckets[c.dominant].color : NO_DATA_COLOR,
-                  fillOpacity: c.total_students ? 0.85 : 0.6,
-                }}
-              >
-                <Tooltip>{c.school_name}</Tooltip>
-                <Popup>
-                  <div className="min-w-[200px] space-y-1.5">
-                    <div className="font-semibold">{c.school_name}</div>
-                    <div className="text-xs text-gray-500">{c.district}{c.network_name ? ` · ${c.network_name}` : ''}</div>
-                    {c.total_students ? (
-                      <>
-                        <div className="text-xs">
-                          {c.total_students} evaluaciones · promedio {c.average_score_1_to_4 ?? '—'}/4
-                        </div>
-                        <DistBar distribution={c.distribution} />
-                        <ul className="text-xs">
-                          {BUCKET_ORDER.map((b) => (
-                            <li key={b} className="flex justify-between">
-                              <span>{BUCKET_LABEL[b]}</span>
-                              <span>{c.distribution[b].count} ({c.distribution[b].pct}%)</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : (
-                      <div className="text-xs text-gray-500">Sin evaluación diagnóstica registrada.</div>
-                    )}
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
+            {schools.map((school) => {
+              const demo = results.get(school.school_key)
+              return demo ? (
+                <Marker key={school.school_key} position={[school.latitude, school.longitude]} icon={donutIcon(demo.distribution)}>
+                  <SchoolDetails school={school} demo={demo} />
+                </Marker>
+              ) : (
+                <CircleMarker key={school.school_key} center={[school.latitude, school.longitude]} radius={4}
+                  pathOptions={{ color: '#fff', weight: 1, fillColor: '#94a3b8', fillOpacity: 0.75 }}>
+                  <Tooltip direction="top">{school.school_name} · Sin desempeño simulado asignado</Tooltip>
+                </CircleMarker>
+              )
+            })}
           </MapContainer>
-          {colorMode === 'distrito' && (
-            <div className="absolute bottom-4 left-4 z-[1000] rounded-lg border bg-card/95 p-3 text-xs text-card-foreground shadow-md backdrop-blur-sm">
-              <div className="mb-1.5 font-semibold">Distritos</div>
-              <ul className="space-y-1">
-                {DISTRICT_ORDER.map((d) => (
-                  <li key={d} className="flex items-center gap-2">
-                    <span className="size-3 rounded-sm" style={{ background: DISTRICT_PALETTE[d] }} />
-                    <span>{DISTRICT_LABEL[d]}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-1.5 flex items-center gap-2 border-t pt-1.5 text-muted-foreground">
-                <span className="size-2 rounded-full bg-slate-400" />
-                Colegios
-              </div>
-            </div>
-          )}
+          <div className="absolute bottom-4 left-4 z-[1000] rounded-lg border bg-card/95 p-3 text-xs text-card-foreground shadow-md backdrop-blur-sm">
+            <div className="mb-1.5 font-semibold">Distritos</div>
+            <ul className="space-y-1">
+              {DISTRICT_ORDER.map((d) => (
+                <li key={d} className="flex items-center gap-2">
+                  <span className="size-3 rounded-sm" style={{ background: DISTRICT_PALETTE[d] }} />
+                  <span>{DISTRICT_LABEL[d]}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-1.5 border-t pt-1.5 text-muted-foreground">Dona: desempeño simulado · Punto gris: sin muestra</div>
+          </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Mostrando {conCoords.length} colegio(s) en el mapa
-          {source !== 'todos' && ` · origen: ${source === 'reales' ? 'reales (MINEDU)' : 'demo (sintéticos)'}`}.
+          Mostrando {schools.length} ubicaciones reales · {results.size} con resultados sintéticos asignados para la demostración.
+          {' '}Estos resultados no representan el desempeño real de los colegios.
         </p>
       </Section>
 
