@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, CircleMarker, GeoJSON, Popup, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, GeoJSON, Popup, Tooltip, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { latLngBounds, point } from 'leaflet'
 import type { Feature, Geometry } from 'geojson'
@@ -309,7 +309,11 @@ export default function MapaDiagnostico() {
         <div ref={cajaRef} className="relative overflow-hidden rounded-lg border">
           <MapContainer ref={mapRef} className="kipu-diagnostic-map" bounds={DISTRICT_BOUNDS} maxBounds={MAP_LIMITS} maxBoundsViscosity={1} maxZoom={18} style={{ height: 'clamp(620px, 68vh, 760px)', width: '100%' }} scrollWheelZoom>
             <DistrictMapLimits />
-            {/* Límites distritales y colegios sobre un fondo limpio. */}
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {/* El mapa base queda atenuado; los distritos y colegios conservan su color. */}
             <GeoJSON data={distritosGeo as never} style={distritoStyle} onEachFeature={makeOnEachDistrito(() => mapRef.current)} />
             {conCoords.map((c) => (
               <CircleMarker

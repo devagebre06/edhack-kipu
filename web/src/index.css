@@ -240,9 +240,13 @@
   }
 }
 
-/* Fondo limpio para que destaquen los límites distritales y los colegios. */
+/* Calles visibles y discretas; los puntos y distritos no pierden intensidad. */
 .kipu-diagnostic-map {
   background: var(--muted);
+}
+.kipu-diagnostic-map .leaflet-tile-pane {
+  filter: grayscale(100%) contrast(0.85);
+  opacity: 0.5;
 }
 
 /* Etiqueta de distrito sobre el mapa (tooltip permanente sin caja). */
