@@ -53,6 +53,9 @@ const COURSES = [
 ]
 const BUCKET_ORDER: MapaBucket[] = ['critico', 'intermedio', 'logrado']
 const BUCKET_LABEL: Record<MapaBucket, string> = { critico: 'En inicio', intermedio: 'En proceso', logrado: 'Logrado' }
+const BUCKET_TEXT_COLOR: Record<MapaBucket, string> = {
+  critico: '#C62828', intermedio: '#9A6700', logrado: '#2E7D32',
+}
 const SORTED_BUCKETS: MapaBucket[] = ['logrado', 'intermedio', 'critico']
 
 // ── Distritos de la UGEL 06 ──────────────────────────────────────────────────
@@ -248,36 +251,22 @@ function ProfesorCard({ p }: { p: ProfesorResumen }) {
 function SchoolDetails({ school, demo }: { school: LocatedSchool; demo: LocatedSchool }) {
   const levels = sortedPerformance(demo.distribution)
   return (
-    <>
-      <Tooltip direction="top" opacity={1}>
-        <div className="min-w-[185px]">
-          <div className="font-semibold">{school.school_name}</div>
-          <div className="mb-1 text-[11px] text-gray-500">Desempeño simulado · secciones de 4.º combinadas</div>
+    <Popup>
+      <div className="min-w-[205px] space-y-1.5">
+        <div className="font-semibold">{school.school_name}</div>
+        <div className="text-xs text-gray-500">Ubicación real · desempeño simulado de las secciones de 4.º</div>
+        <div className="text-xs">{school.district} · {demo.total_students} evaluaciones de muestra</div>
+        <DistBar distribution={demo.distribution} />
+        <ul className="text-xs">
           {levels.map((level) => (
-            <div key={level} className="flex justify-between gap-4 text-xs">
+            <li key={level} className="flex justify-between gap-3 font-medium" style={{ color: BUCKET_TEXT_COLOR[level] }}>
               <span>{BUCKET_LABEL[level]}</span>
-              <strong>{demo.distribution[level].pct}%</strong>
-            </div>
+              <span>{demo.distribution[level].count} ({demo.distribution[level].pct}%)</span>
+            </li>
           ))}
-        </div>
-      </Tooltip>
-      <Popup>
-        <div className="min-w-[205px] space-y-1.5">
-          <div className="font-semibold">{school.school_name}</div>
-          <div className="text-xs text-gray-500">Ubicación real · desempeño simulado de las secciones de 4.º</div>
-          <div className="text-xs">{school.district} · {demo.total_students} evaluaciones de muestra</div>
-          <DistBar distribution={demo.distribution} />
-          <ul className="text-xs">
-            {levels.map((level) => (
-              <li key={level} className="flex justify-between gap-3">
-                <span>{BUCKET_LABEL[level]}</span>
-                <span>{demo.distribution[level].count} ({demo.distribution[level].pct}%)</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </Popup>
-    </>
+        </ul>
+      </div>
+    </Popup>
   )
 }
 
