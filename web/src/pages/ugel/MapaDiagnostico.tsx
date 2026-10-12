@@ -259,9 +259,11 @@ function SchoolDetails({ school, demo }: { school: LocatedSchool; demo: LocatedS
         <DistBar distribution={demo.distribution} />
         <ul className="text-xs">
           {levels.map((level) => (
-            <li key={level} className="flex justify-between gap-3 font-medium" style={{ color: BUCKET_TEXT_COLOR[level] }}>
+            <li key={level} className="flex justify-between gap-3">
               <span>{BUCKET_LABEL[level]}</span>
-              <span>{demo.distribution[level].count} ({demo.distribution[level].pct}%)</span>
+              <span className="font-medium" style={{ color: BUCKET_TEXT_COLOR[level] }}>
+                {demo.distribution[level].count} ({demo.distribution[level].pct}%)
+              </span>
             </li>
           ))}
         </ul>
