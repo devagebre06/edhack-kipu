@@ -24,8 +24,12 @@ function DistrictMapLimits() {
 
   useEffect(() => {
     const padding: [number, number] = [24, 24]
-    const fitDistricts = () => {
+    const updateMinZoom = () => {
+      map.setMinZoom(0)
       map.setMinZoom(map.getBoundsZoom(DISTRICT_BOUNDS, false, point(48, 48)))
+    }
+    const fitDistricts = () => {
+      updateMinZoom()
       map.fitBounds(DISTRICT_BOUNDS, { padding })
     }
     map.setMaxBounds(MAP_LIMITS)
@@ -33,7 +37,7 @@ function DistrictMapLimits() {
 
     const onResize = () => {
       const atOverview = map.getZoom() <= map.getMinZoom()
-      map.setMinZoom(map.getBoundsZoom(DISTRICT_BOUNDS, false, point(48, 48)))
+      updateMinZoom()
       if (atOverview) map.fitBounds(DISTRICT_BOUNDS, { padding })
     }
     map.on('resize', onResize)
@@ -307,7 +311,7 @@ export default function MapaDiagnostico() {
 
       <Section title="Mapa por colegio">
         <div ref={cajaRef} className="relative overflow-hidden rounded-lg border">
-          <MapContainer ref={mapRef} className="kipu-diagnostic-map" bounds={DISTRICT_BOUNDS} maxBounds={MAP_LIMITS} maxBoundsViscosity={1} maxZoom={18} style={{ height: 'clamp(620px, 68vh, 760px)', width: '100%' }} scrollWheelZoom>
+          <MapContainer ref={mapRef} className="kipu-diagnostic-map" bounds={DISTRICT_BOUNDS} maxBounds={MAP_LIMITS} maxBoundsViscosity={1} maxZoom={18} zoomSnap={0.25} zoomDelta={0.5} style={{ height: 'clamp(620px, 68vh, 760px)', width: '100%' }} scrollWheelZoom>
             <DistrictMapLimits />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
