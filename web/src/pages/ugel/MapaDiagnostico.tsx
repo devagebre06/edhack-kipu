@@ -18,19 +18,19 @@ const DISTRICT_BOUNDS = latLngBounds(
   ),
 )
 const MAP_LIMITS = DISTRICT_BOUNDS.pad(0.12)
+const DISTRICT_VIEW_PADDING: [number, number] = [24, 24]
 
 function DistrictMapLimits() {
   const map = useMap()
 
   useEffect(() => {
-    const padding: [number, number] = [24, 24]
     const updateMinZoom = () => {
       map.setMinZoom(0)
       map.setMinZoom(map.getBoundsZoom(DISTRICT_BOUNDS, false, point(48, 48)))
     }
     const fitDistricts = () => {
       updateMinZoom()
-      map.fitBounds(DISTRICT_BOUNDS, { padding })
+      map.fitBounds(DISTRICT_BOUNDS, { padding: DISTRICT_VIEW_PADDING })
     }
     map.setMaxBounds(MAP_LIMITS)
     fitDistricts()
@@ -38,7 +38,7 @@ function DistrictMapLimits() {
     const onResize = () => {
       const atOverview = map.getZoom() <= map.getMinZoom()
       updateMinZoom()
-      if (atOverview) map.fitBounds(DISTRICT_BOUNDS, { padding })
+      if (atOverview) map.fitBounds(DISTRICT_BOUNDS, { padding: DISTRICT_VIEW_PADDING })
     }
     map.on('resize', onResize)
     return () => { map.off('resize', onResize) }
@@ -396,6 +396,16 @@ export default function MapaDiagnostico() {
             <GeoJSON data={distritosGeo as never} style={distritoStyle} onEachFeature={makeOnEachDistrito(() => mapRef.current)} />
             <SchoolMarkers schools={schools} results={results} view={mapView} />
           </MapContainer>
+          <button type="button" aria-label="Volver a la vista inicial del mapa" title="Volver a la vista inicial"
+            onClick={() => {
+              const map = mapRef.current
+              if (!map) return
+              map.closePopup()
+              map.fitBounds(DISTRICT_BOUNDS, { padding: DISTRICT_VIEW_PADDING })
+            }}
+            className="absolute bottom-4 left-4 z-[1000] rounded-md border bg-background px-3 py-2 text-sm font-medium shadow-md transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+            Vista inicial
+          </button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           {mapView === 'performance'
