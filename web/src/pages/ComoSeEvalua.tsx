@@ -429,7 +429,7 @@ export default function ComoSeEvalua() {
             </div>
           ))}
         </div>
-        <Card>
+        <Card className="mt-4">
           <CardContent>
             <p className="mb-2 text-sm font-medium">Puntos por criterio</p>
             <ul className="grid gap-2 sm:grid-cols-2">
