@@ -10,3 +10,7 @@ dist/
 # Se usan como referencia local para generar data sintética; nunca se versionan.
 docs/privado/
 docs/normativa/
+
+# Bocetos locales de la interfaz, ajenos a la web publicada.
+web/demo.html
+web/src/demo/

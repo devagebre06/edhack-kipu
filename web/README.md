@@ -1,32 +1,7 @@
-# React + TypeScript + Vite
+# Web de Kipu
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Interfaz de la prueba de concepto construida con React, TypeScript y Vite. La guía general y las direcciones vigentes están en el [README principal](../README.md).
 
-Currently, two official plugins are available:
+Para iniciarla localmente, crea `web/.env` con las variables de `web/.env.example`, ejecuta `npm ci` y luego `npm run dev` desde esta carpeta. La web necesita una API Kipu y un proyecto Supabase accesibles. `npm run build` comprueba el código y genera `web/dist/`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+La versión pública se construye desde `main` mediante [GitHub Actions](../.github/workflows/deploy-pages.yml). Sus variables `VITE_*` se configuran en el repositorio de GitHub; la clave `SUPABASE_SERVICE_ROLE_KEY` y la clave de Gemini se usan solamente en la API.

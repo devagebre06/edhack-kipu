@@ -1,5 +1,7 @@
 # Kipu — Documentación técnica
 
+> **Referencia histórica.** Algunas rutas, servicios y procedimientos aquí descritos corresponden a una versión anterior. Para la configuración vigente, consultar [README](../README.md), [entrega-poc.md](entrega-poc.md) y el código.
+
 > Referencia técnica completa del sistema. Para una visión general y de producto,
 > ver [proyecto.md](proyecto.md). Última actualización: 2026-07-19.
 

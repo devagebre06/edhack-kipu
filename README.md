@@ -1,54 +1,70 @@
-# Kipu — Trazabilidad pedagógica que acompaña
+# Kipu - prueba de concepto
 
-MVP hackathon UGEL: los docentes suben evidencias (PDF/PPTX/XLSX), MarkItDown las convierte, Gemini las evalúa contra rúbricas del CNEB y devuelve retroalimentación accionable. Directores supervisan su institución; UGEL ve métricas agregadas y alertas. Versionamiento inmutable y auditoría.
+Kipu permite que docentes de 4.º de primaria presenten unidades de aprendizaje y sesiones de Matemática o Comunicación. La aplicación extrae el contenido de los archivos, lo revisa con Gemini y devuelve una nota documental y recomendaciones. También muestra información diagnóstica y paneles para dirección y UGEL. Es un **MVP demostrativo**, no una evaluación oficial ni una constatación de lo que ocurrió en el aula.
 
-## URLs producción
+La información de estudiantes, docentes y desempeño de la demo es sintética. El mapa utiliza ubicaciones reales de colegios; los resultados simulados se muestran solo en una selección de esas ubicaciones.
 
-- **Web**: https://kipu-one.vercel.app
-- **API**: https://kipu-api-production.up.railway.app (Railway, con Python + markitdown)
-- **DB/Auth/Storage**: Supabase `yoylrbqqxumdgvgdtviw`
+## Demo vigente
 
-## Credenciales demo (password: `KipuDemo2026!`)
+| Componente | Dirección o servicio |
+| --- | --- |
+| Web | https://devagebre06.github.io/edhack-kipu/ (GitHub Pages) |
+| API | https://edhack-kipu-production.up.railway.app (Railway) |
+| Base de datos, acceso y archivos | Supabase, en el proyecto administrado por la demo |
+| Evaluación de documentos | Google Gemini; modelo principal y respaldo configurables en la API |
 
-| Rol | Correo |
-|---|---|
-| Profesora (I.E. 2034) | profesor@kipu.demo |
-| Director (I.E. 2034) | director@kipu.demo |
-| Especialista UGEL | ugel@kipu.demo |
+La web se publica desde `main` con [GitHub Actions](.github/workflows/deploy-pages.yml). El despliegue de la API se configura en Railway con directorio raíz `/api`. Los dominios, proyectos y claves pueden cambiar durante la transferencia; estas direcciones describen la demo actual.
 
-También: profesor2–4@, director2@ (misma contraseña).
+## Acceso demostrativo
 
-## Guion de demo (5 min)
+| Rol | Usuario |
+| --- | --- |
+| Docente | `profesor@kipu.demo` |
+| Dirección | `director@kipu.demo` |
+| UGEL | `ugel@kipu.demo` |
 
-1. Login **profesor@** → dashboard con sus entregas y estados.
-2. Subir un PDF de sesión (tipo "Sesión de clase", clase de hoy) — la ventana horaria valida en el backend (30 min antes → fin de clase).
-3. En ~30 s: evaluación de Gemini con puntaje, fortalezas, mejoras y resultado por criterio con evidencia citada. La sesión sin estrategia de retroalimentación queda **Necesita corrección**.
-4. "Subir corrección" con la versión mejorada → **Aprobada**, con comparación vs. versión anterior e historial inmutable.
-5. Login **director@** → métricas de su institución, tabla de entregas filtrable, alertas, **Descargar Excel**.
-6. Login **ugel@** → métricas agregadas por institución, gráfico score/invalidez, grupos con notas bajas, y las 2 alertas (docentes con unidades inválidas consecutivas, grupo 3B con notas bajas). Cambiar el estado de una alerta a **En revisión** (queda auditado por trigger).
+Contraseña compartida de la **demo sintética**: `KipuDemo2026!`. Está publicada para facilitar la demostración; no se debe usar con información personal real. El administrador receptor deberá decidir cuándo reemplazar estas cuentas y su contraseña.
 
-PDFs de prueba listos: pedir a Claude regenerar `sesion-v1.pdf` (sin retroalimentación) y `sesion-v2.pdf` (corregida) o usar cualquier sesión real.
+## Estructura del repositorio
 
-## Desarrollo local
+- `web/`: React, TypeScript y Vite; se comunica con Supabase y la API.
+- `api/`: Express, conversión de PDF/PPTX/XLSX con MarkItDown y evaluación con Gemini.
+- `api/config/prompts/planificacion-4primaria.v1.md`: instrucciones de evaluación vigentes. Ocho criterios de 0 a 3; la nota es la suma convertida a 100 y 75/100 es el mínimo satisfactorio.
+- `supabase/`: modelo y migraciones de la base de datos.
+- `api/scripts/`: creación y mantenimiento de datos de demostración; algunos scripts sustituyen o eliminan datos y requieren respaldo previo.
+- `docs/entrega-poc.md`: comprobaciones para transferir la administración.
+
+La documentación antigua del hackathon se conserva como referencia histórica. Para la configuración actual, empieza por este archivo, `docs/entrega-poc.md` y el código.
+
+## Ejecución local
+
+Se necesita Node.js 22, Python 3 y acceso a un proyecto de Supabase y una clave de Gemini. Las claves se entregan por un canal privado y no están incluidas en Git. **Si se crea un ZIP desde la carpeta local, se deben excluir `.env`, `.git`, `node_modules` y `dist`; descargar el ZIP desde GitHub evita incluir los archivos ignorados.**
+
+1. En `api/`, crear `.env` a partir de `.env.example` y completar `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `GEMINI_API_KEY`. El modelo principal, el de respaldo y `PORT` son configurables.
+2. En `web/`, crear `.env` a partir de `.env.example` y completar `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` y `VITE_API_BASE_URL`.
+3. Instalar dependencias y arrancar cada parte en su propia terminal:
 
 ```bash
-# migración + seed (una vez)
-psql "host=aws-1-us-west-2.pooler.supabase.com port=6543 user=postgres.yoylrbqqxumdgvgdtviw dbname=postgres sslmode=require" -f supabase/migrations/001_init.sql
-cd api && SUPABASE_SERVICE_ROLE_KEY=... node seed.mjs
-
-# api (requiere markitdown: pip install 'markitdown[pdf,pptx,xlsx]')
-cd api && npm i && npm run dev        # :3001
-
-# web
-cd web && npm i && npm run dev        # :5173
+cd api
+npm ci
+python -m pip install 'markitdown[pdf,pptx,xlsx]'
+npm run dev
 ```
 
-Variables: ver `api/.env.example` y `web/.env.example`. El service role y la key de Gemini nunca llegan al frontend; el web solo usa la anon key con RLS.
+```bash
+cd web
+npm ci
+npm run dev
+```
 
-## Arquitectura (recortes deliberados de hackathon)
+Por defecto, la API escucha en `http://localhost:3001` y la web en `http://localhost:5173`. Abrir `/health` en la API permite comprobar que responde; la prueba completa requiere iniciar sesión y cargar un documento sintético.
 
-- `web/` Vite + React + TS + Tailwind 4 + TanStack Query + Recharts. Lecturas directas a Supabase con RLS por rol; identidad de marca en `docs/brand.md`.
-- `api/` Express + TS. Un solo pipeline síncrono: multer → Supabase Storage (bucket privado `evidence`) → `markitdown` (subproceso Python) → Gemini (`responseSchema` JSON + Zod) → umbrales de decisión → auditoría. Sin worker separado ni cola de jobs.
-- Rúbrica versionada en `api/config/rubrics/daily-session.v1.json`.
-- Alertas seed + trigger de auditoría en cambios de estado. Export Excel en el cliente (lib `xlsx`).
-- Sin tests automatizados (decisión de tiempo); flujo verificado end-to-end contra servicios reales.
+## Comprobación y límites
+
+```bash
+cd web && npm run build
+```
+
+El resultado de Gemini puede variar entre ejecuciones. El servicio tiene límites de uso y puede devolver errores de cuota o disponibilidad; el modelo de respaldo mejora la continuidad, pero no garantiza evaluaciones ilimitadas. La API procesa cada entrega durante la misma solicitud y no tiene una cola de trabajos. Esta PoC no se entrega como sistema listo para usar con datos reales.
+
+Consulta [la guía de entrega](docs/entrega-poc.md) antes de transferir el repositorio o crear una nueva instancia.
