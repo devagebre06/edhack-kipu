@@ -109,15 +109,16 @@ function assignDemoResults(schools: MapaColegio[]) {
 const sortedPerformance = (distribution: MapaDistribution) => [...SORTED_BUCKETS]
   .sort((a, b) => distribution[b].pct - distribution[a].pct)
 
-function donutIcon(distribution: MapaDistribution) {
+function donutIcon(distribution: MapaDistribution, size: number) {
   const total = SORTED_BUCKETS.reduce((sum, bucket) => sum + distribution[bucket].count, 0)
   const startYellow = total ? 100 * distribution.critico.count / total : 0
   const startGreen = total ? 100 * (distribution.critico.count + distribution.intermedio.count) / total : 0
   const gradient = `conic-gradient(#D32F2F 0 ${startYellow.toFixed(2)}%, #FBC02D ${startYellow.toFixed(2)}% ${startGreen.toFixed(2)}%, #43A047 ${startGreen.toFixed(2)}% 100%)`
+  const half = size / 2
   return divIcon({
     className: 'kipu-performance-icon',
-    html: `<span class="kipu-performance-donut" style="background:${gradient}"></span>`,
-    iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14], tooltipAnchor: [0, -14],
+    html: `<span class="kipu-performance-donut" style="--donut-size:${size}px;--donut-inset:${Math.round(size * 0.25)}px;background:${gradient}"></span>`,
+    iconSize: [size, size], iconAnchor: [half, half], popupAnchor: [0, -half], tooltipAnchor: [0, -half],
   })
 }
 
@@ -280,6 +281,42 @@ function SchoolDetails({ school, demo }: { school: LocatedSchool; demo: LocatedS
   )
 }
 
+function SchoolMarkers({ schools, results, view }: {
+  schools: LocatedSchool[]
+  results: Map<string, LocatedSchool>
+  view: MapView
+}) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(map.getZoom())
+  useEffect(() => {
+    const updateZoom = () => setZoom(map.getZoom())
+    map.on('zoomend', updateZoom)
+    updateZoom()
+    return () => { map.off('zoomend', updateZoom) }
+  }, [map])
+  const donutSize = Math.min(82, Math.round(28 + Math.max(0, zoom - 12) * 9))
+
+  return schools.map((school) => {
+    if (view === 'locations') return (
+      <CircleMarker key={school.school_key} center={[school.latitude, school.longitude]} radius={5}
+        pathOptions={{ color: '#fff', weight: 1, fillColor: districtColor(school.district), fillOpacity: 0.85 }}>
+        <Tooltip direction="top"><strong>{school.school_name}</strong> · {school.district}</Tooltip>
+      </CircleMarker>
+    )
+    const demo = results.get(school.school_key)
+    return demo ? (
+      <Marker key={school.school_key} position={[school.latitude, school.longitude]} icon={donutIcon(demo.distribution, donutSize)}>
+        <SchoolDetails school={school} demo={demo} />
+      </Marker>
+    ) : (
+      <CircleMarker key={school.school_key} center={[school.latitude, school.longitude]} radius={4}
+        pathOptions={{ color: '#fff', weight: 1, fillColor: '#94a3b8', fillOpacity: 0.75 }}>
+        <Tooltip direction="top">{school.school_name} · Sin desempeño simulado asignado</Tooltip>
+      </CircleMarker>
+    )
+  })
+}
+
 export default function MapaDiagnostico() {
   const [course, setCourse] = useState('all')
   const [mapView, setMapView] = useState<MapView>('performance')
@@ -366,32 +403,12 @@ export default function MapaDiagnostico() {
             />
             {/* El mapa base queda atenuado; los distritos y colegios conservan su color. */}
             <GeoJSON data={distritosGeo as never} style={distritoStyle} onEachFeature={makeOnEachDistrito(() => mapRef.current)} />
-            {schools.map((school) => {
-              if (mapView === 'locations') return (
-                <CircleMarker key={school.school_key} center={[school.latitude, school.longitude]} radius={5}
-                  pathOptions={{ color: '#fff', weight: 1, fillColor: districtColor(school.district), fillOpacity: 0.85 }}>
-                  <Tooltip direction="top">
-                    <strong>{school.school_name}</strong> · {school.district}
-                  </Tooltip>
-                </CircleMarker>
-              )
-              const demo = results.get(school.school_key)
-              return demo ? (
-                <Marker key={school.school_key} position={[school.latitude, school.longitude]} icon={donutIcon(demo.distribution)}>
-                  <SchoolDetails school={school} demo={demo} />
-                </Marker>
-              ) : (
-                <CircleMarker key={school.school_key} center={[school.latitude, school.longitude]} radius={4}
-                  pathOptions={{ color: '#fff', weight: 1, fillColor: '#94a3b8', fillOpacity: 0.75 }}>
-                  <Tooltip direction="top">{school.school_name} · Sin desempeño simulado asignado</Tooltip>
-                </CircleMarker>
-              )
-            })}
+            <SchoolMarkers schools={schools} results={results} view={mapView} />
           </MapContainer>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           {mapView === 'performance'
-            ? `Mostrando ${schools.length} ubicaciones reales · ${results.size} donas con resultados sintéticos; los puntos grises no tienen muestra. Estos resultados no representan el desempeño real de los colegios.`
+            ? `Mostrando ${schools.length} ubicaciones reales · ${results.size} donas con resultados sintéticos; los puntos grises no tienen muestra. Acércate para ampliar las donas. Estos resultados no representan el desempeño real de los colegios.`
             : `Mostrando ${schools.length} ubicaciones reales de colegios, sin datos de desempeño.`}
         </p>
       </Section>
